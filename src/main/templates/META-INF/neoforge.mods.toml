@@ -9,6 +9,7 @@ version="${mod_version}"
 displayName="${mod_name}"
 updateJSONURL="https://raw.githubusercontent.com/yigit-guven/Simply-Teams/main/update.json"
 displayURL="${mod_url}"
+logoFile="logo.png"
 authors="${mod_authors}"
 description='''
 A 100% server-sided team management mod for Minecraft that completely replaces the vanilla /team command with custom ranks, permissions, chest UI, home bases, and tab list cosmetics. Not required by clients.

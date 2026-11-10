@@ -1,5 +1,9 @@
 # Simply Teams
 
+<p align="center">
+  <img src="logo.gif" alt="Simply Teams" width="320" />
+</p>
+
 A server-sided Minecraft mod that replaces the vanilla `/team` command with an expanded team management system.
 
 ## Project Information
