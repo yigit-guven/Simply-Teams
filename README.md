@@ -1,133 +1,142 @@
 # Simply Teams
 
-[![GitHub](https://img.shields.io/badge/GitHub-Simply--Teams-blue?logo=github)](https://github.com/yigit-guven/Simply-Teams)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![NeoForge](https://img.shields.io/badge/NeoForge-1.21.1-orange)](https://neoforged.net/)
-[![Side](https://img.shields.io/badge/Side-100%25%20Server--Sided-brightgreen)](#-zero-client-requirements)
+A server-sided Minecraft mod for NeoForge 1.21.1 that replaces the vanilla `/team` command with an expanded team management system.
 
-A high-performance, **100% server-sided** Minecraft mod for **NeoForge 1.21.1** that replaces Minecraft's vanilla `/team` command with an intuitive, extensible team management system.
+## Project Information
 
-* **Author:** Yigit_Guven
-* **Repository:** [https://github.com/yigit-guven/Simply-Teams](https://github.com/yigit-guven/Simply-Teams)
-* **Issues & Bug Reports:** [https://github.com/yigit-guven/Simply-Teams/issues](https://github.com/yigit-guven/Simply-Teams/issues)
+- Author: Yigit_Guven
+- License: MIT
+- Minecraft Version: 1.21.1
+- Mod Loader: NeoForge (21.1.x)
+- Environment: Server-side only (clients do not need the mod installed)
 
----
+## Links
 
-## 🛡️ Zero Client Requirements
-
-Simply Teams runs **purely on the server**.
-* Clients do **NOT** need the mod installed.
-* Vanilla Minecraft clients, Lunar Client, Badlion, Bedrock Edition (via Geyser), and all custom clients can connect and use every feature without warnings or handshake mismatches.
-* Network channels are marked as optional (`event.registrar(MODID).optional()`).
-* All user interfaces use native Minecraft packets (`MenuType.GENERIC_9x6`), standard chat components, and scoreboard synchronizations.
+- GitHub Repository: https://github.com/yigit-guven/Simply-Teams
+- Issue Tracker: https://github.com/yigit-guven/Simply-Teams/issues
+- Documentation Wiki: https://github.com/yigit-guven/Simply-Teams/wiki
+- CurseForge: https://www.curseforge.com/minecraft/mc-mods/simply-teams/
+- Modrinth: https://modrinth.com/mod/simply-teams/
 
 ---
 
-## 🌟 Key Features
+## Overview
 
-1. **Replaces Vanilla `/team` Commands**:
-   - The vanilla `/team` command tree is completely unhooked and eradicated from the server dispatcher.
-   - Replaced by Simply Teams' custom command tree.
-2. **Context-Aware Dynamic Visibility**:
-   - Players without a team only see `/team create`, `/team accept`, `/team info`, and `/team list`.
-   - Players with a team see team-specific commands (`/team members`, `/team invite`, `/team leave`, `/team chat`, `/team icon`, `/team prefix`, `/team suffix`, `/team color`, `/team rank`, `/team sethome`, `/team home`, `/team friendlyfire`, `/team motd`, etc.).
-   - As soon as a team is created, joined, or left, the server updates the client's command suggestions in real time (`sendCommands(player)`).
-3. **Spaced Display Names & Configurable Limits**:
-   - Team display names can contain spaces (e.g. `/team create The Dragon Slayers`).
-   - Maximum character length is configurable in `simply_teams-server.toml` (defaults to `-1` for unlimited).
-   - Team ID is permanently and uniquely tied to the founder/leader's username.
-4. **Interactive Invitations & Expiration**:
-   - `/team invite <player>` sends an interactive, clickable invite in chat with a countdown timer.
-   - `/team accept [player|teamId]` validates invite lifetime (defaults to 60s, configurable) before letting players join.
-5. **Native 6-Row Chest UI (`/team members`)**:
-   - Uses Minecraft's native `MenuType.GENERIC_9x6` (`ChestMenu`), opening natively on any client.
-   - Displays real member skins on player heads for both online and offline members (`ResolvableProfile`).
-   - The team leader is always displayed first in slot 0 with the Leader rank.
-   - Tooltips show member rank, online/offline status, join date, and founder notes.
-   - Includes pagination controls and team statistics summary.
-   - **Strictly Read-Only**: Server cancels all item pickups, drops, or moves.
-6. **Cosmetics & Tab List (Player List) Integration**:
-   - **Team Icon (`/team icon`)**: Takes whatever item the leader or authorized member is holding in their main hand and assigns it as the team icon.
-   - **Server Tab List ("TAB")**: Formats player names in the TAB overlay:  
-     `[Prefix] PlayerName [Icon] [Suffix]`  
-     Hovering over the icon in chat or TAB displays the full item tooltip.
-   - **Prefix & Suffix**: `/team prefix <tag> <color> <bold>` and `/team suffix <tag> <color> <bold>`.
-   - **Team Color**: `/team color <color>` (supports all standard Minecraft colors).
-7. **Comprehensive Ranks & Permissions System**:
-   - Default ranks: `Leader` (priority 100), `Officer` (priority 50), `Member` (priority 10).
-   - Create custom ranks: `/team rank create <id> <displayName> [priority]`.
-   - Assign ranks: `/team rank set <player> <rankId>`.
-   - Customize appearance: `/team rank color <rankId> <color>` and `/team rank bold <rankId> <true|false>`.
-   - Granular permissions: `INVITE`, `KICK`, `CHANGE_ICON`, `CHANGE_COLOR`, `CHANGE_PREFIX`, `CHANGE_SUFFIX`, `MANAGE_RANKS`, `SET_RANK`, `RENAME`, `CHAT`, `TOGGLE_FRIENDLY_FIRE`, `SET_HOME`.
-8. **Team Features**:
-   - **Friendly Fire Toggle**: `/team friendlyfire [true|false]` (or `/team ff`). Automatically cancels damage between teammates when friendly fire is disabled.
-   - **Team Chat Mode**: `/team chat` with no args toggles team chat mode, automatically routing normal chat messages to teammates!
-   - **Team Home Base**: `/team sethome` and `/team home` for shared team bases.
-   - **Team MOTD**: `/team motd <message>` greets members when they log into the server.
-   - **Server Directory**: `/team list [page]` for browsing public teams.
-9. **World Persistence & Scoreboard Synchronization**:
-   - Data is saved directly to world storage (`TeamSavedData`) and persists across server reboots.
-   - Synchronizes with Minecraft's vanilla `Scoreboard` so player nametags and glowing effects respect team colors and formatting.
+Simply Teams unhooks the vanilla `/team` command tree and replaces it with an independent team system. The mod runs entirely on the server. Connecting clients (vanilla, modded, or proxy connections like Geyser) do not need to install the mod to join or use any features.
+
+### Key Capabilities
+
+- Command replacement: The vanilla `/team` command is completely removed and replaced.
+- Context-sensitive suggestions: Players without a team only see commands relevant to team creation or joining. Players in a team see operational commands. Command trees update dynamically without requiring reconnection.
+- Spaced display names: Team names can contain spaces. Maximum length is configurable (default is unlimited).
+- Leader ID: The internal team identifier matches the founder's username.
+- Invitations: Interactive, clickable chat invitations with configurable expiration timeouts.
+- Members UI: Uses the native 54-slot chest interface (`MenuType.GENERIC_9x6`) to show member player heads, skins (online and offline), rank formatting, join dates, and pagination. Slots are read-only to prevent item movement.
+- Tab list formatting: Displays team prefix, player name, team icon, and team suffix in the player list.
+- Team icon: Captures the item held in the player's main hand and sets it as the team icon.
+- Rank management: Customizable rank hierarchy with priority numbers, colors, bold formatting, and granular permissions.
+- Team home: Allows setting and teleporting to a team base.
+- Team chat: Dedicated team chat command and a persistent team chat toggle mode.
+- Friendly fire: Configurable per-team damage protection between teammates.
+- Persistence: All data is saved to world storage (`TeamSavedData`) in NBT format and persists across server reboots.
+- Scoreboard integration: Syncs with vanilla scoreboard teams for name colors and nametag visibility.
 
 ---
 
-## 📜 Command Reference
+## Commands
 
-### For Players Without a Team:
-| Command | Description |
-|---|---|
-| `/team create <display name>` | Create a team with your username as unique ID |
-| `/team accept [player or team]` | Accept a pending team invitation |
-| `/team info [teamId]` | View information about a team |
-| `/team list [page]` | Browse all server teams |
+### Players Without a Team
 
-### For Players In a Team:
-| Command | Permission Required | Description |
+| Command | Arguments | Description |
 |---|---|---|
-| `/team members` | Any member | Open the chest UI showing all members and ranks |
-| `/team chat` | `CHAT` | Toggle Team Chat mode on/off |
-| `/team chat <message>` | `CHAT` | Send a private message to team members |
-| `/team c <message>` | `CHAT` | Alias for `/team chat <message>` |
-| `/team invite <player>` | `INVITE` | Invite an online player |
-| `/team kick <player>` | `KICK` | Kick a member with lower rank |
-| `/team leave` | Any member | Leave the team (leader must transfer or disband) |
-| `/team icon` | `CHANGE_ICON` | Set team icon to held main-hand item |
-| `/team icon clear` | `CHANGE_ICON` | Clear the team icon |
-| `/team color <color>` | `CHANGE_COLOR` | Change team color |
-| `/team prefix <tag> <color> <bold>` | `CHANGE_PREFIX` | Set custom prefix |
-| `/team prefix clear` | `CHANGE_PREFIX` | Clear prefix |
-| `/team suffix <tag> <color> <bold>` | `CHANGE_SUFFIX` | Set custom suffix |
-| `/team suffix clear` | `CHANGE_SUFFIX` | Clear suffix |
-| `/team friendlyfire [true\|false]` | `TOGGLE_FRIENDLY_FIRE` | Toggle or set friendly fire |
-| `/team motd <message>` | `RENAME` | Set team message of the day |
-| `/team sethome` | `SET_HOME` | Set team home base at current location |
-| `/team home` | Any member | Teleport to team home base |
-| `/team delhome` | `SET_HOME` | Delete team home base |
-| `/team rename <new name>` | `RENAME` | Change team display name |
-| `/team transfer <player>` | Leader only | Transfer team leadership |
-| `/team disband` | Leader only | Disband team (with confirmation prompt) |
+| `/team create <name>` | Greedy string | Creates a new team with the specified display name. |
+| `/team accept [target]` | Optional string | Accepts an invite from a player or team ID. |
+| `/team info [teamId]` | Optional word | Displays information about a team. |
+| `/team list [page]` | Optional integer | Lists all teams registered on the server. |
 
-### Rank Management:
-| Command | Description |
-|---|---|
-| `/team rank list` | List all ranks, priorities, colors, and permissions |
-| `/team rank create <id> <name> [priority]` | Create a new custom rank |
-| `/team rank delete <id>` | Delete a custom rank |
-| `/team rank set <player> <rankId>` | Assign a rank to a player |
-| `/team rank color <rankId> <color>` | Change the display color of a rank |
-| `/team rank bold <rankId> <true\|false>` | Toggle bold formatting for a rank |
-| `/team rank permission <rankId> add <perm>` | Grant a permission to a rank |
-| `/team rank permission <rankId> remove <perm>` | Revoke a permission from a rank |
+### Team Members
+
+| Command | Arguments | Permission | Description |
+|---|---|---|---|
+| `/team members` | None | None | Opens the chest GUI displaying all team members. |
+| `/team info` | None | None | Displays current team statistics and settings. |
+| `/team leave` | None | None | Leaves the current team (leaders must transfer or disband). |
+| `/team chat` | None | `CHAT` | Toggles persistent team chat mode on or off. |
+| `/team chat <message>` | Greedy string | `CHAT` | Sends a message to team members only. |
+| `/team c <message>` | Greedy string | `CHAT` | Alias for `/team chat <message>`. |
+| `/team invite <player>` | Player entity | `INVITE` | Sends an invitation to an online player. |
+| `/team kick <member>` | Member name | `KICK` | Removes a member of lower rank from the team. |
+| `/team rename <name>` | Greedy string | `RENAME` | Changes the team display name. |
+| `/team icon` | None | `CHANGE_ICON` | Sets the team icon to the held main-hand item. |
+| `/team icon clear` | None | `CHANGE_ICON` | Clears the team icon. |
+| `/team color <color>` | Color name | `CHANGE_COLOR` | Sets the team color. |
+| `/team prefix <tag> <color> <bold>` | Word, Color, Boolean | `CHANGE_PREFIX` | Sets the team prefix text and styling. |
+| `/team prefix clear` | None | `CHANGE_PREFIX` | Clears the team prefix. |
+| `/team suffix <tag> <color> <bold>` | Word, Color, Boolean | `CHANGE_SUFFIX` | Sets the team suffix text and styling. |
+| `/team suffix clear` | None | `CHANGE_SUFFIX` | Clears the team suffix. |
+| `/team friendlyfire [enabled]` | Optional boolean | `TOGGLE_FRIENDLY_FIRE` | Toggles or sets friendly fire for the team. |
+| `/team ff [enabled]` | Optional boolean | `TOGGLE_FRIENDLY_FIRE` | Alias for `/team friendlyfire`. |
+| `/team motd <message>` | Greedy string | `RENAME` | Sets the team message of the day. |
+| `/team motd clear` | None | `RENAME` | Clears the team message of the day. |
+| `/team sethome` | None | `SET_HOME` | Sets the team home base at current position. |
+| `/team home` | None | None | Teleports to the team home base. |
+| `/team delhome` | None | `SET_HOME` | Deletes the team home base. |
+
+### Leader-Only Commands
+
+| Command | Arguments | Description |
+|---|---|---|
+| `/team transfer <member>` | Player entity | Transfers team leadership to another member. |
+| `/team disband` | None | Initiates team disbanding (requires confirmation). |
+| `/team disband confirm` | None | Confirms and permanently disbands the team. |
+
+### Rank Management Commands
+
+| Command | Arguments | Permission | Description |
+|---|---|---|---|
+| `/team rank list` | None | None | Lists all ranks, priorities, and permissions. |
+| `/team rank create <id> <name> [priority]` | Word, String, Integer (1-99) | `MANAGE_RANKS` | Creates a new custom rank. |
+| `/team rank delete <id>` | Word | `MANAGE_RANKS` | Deletes a custom rank. |
+| `/team rank set <member> <rankId>` | Word, Word | `SET_RANK` | Assigns a member to a rank. |
+| `/team rank color <rankId> <color>` | Word, Color | `MANAGE_RANKS` | Changes rank display color. |
+| `/team rank bold <rankId> <boolean>` | Word, Boolean | `MANAGE_RANKS` | Toggles bold formatting for a rank. |
+| `/team rank permission <rankId> add <perm>` | Word, Permission name | `MANAGE_RANKS` | Adds a permission to a rank. |
+| `/team rank permission <rankId> remove <perm>` | Word, Permission name | `MANAGE_RANKS` | Removes a permission from a rank. |
 
 ---
 
-## ⚙️ Server Configuration (`simply_teams-server.toml`)
+## Permissions Reference
 
-Stored in the server `world/serverconfig/simply_teams-server.toml` or `config/` directory:
+| Permission Node | Description |
+|---|---|
+| `INVITE` | Allows inviting other players to the team. |
+| `KICK` | Allows kicking members of lower rank from the team. |
+| `CHANGE_ICON` | Allows setting or clearing the team icon item. |
+| `CHANGE_COLOR` | Allows changing the team color. |
+| `CHANGE_PREFIX` | Allows setting or clearing the team prefix. |
+| `CHANGE_SUFFIX` | Allows setting or clearing the team suffix. |
+| `MANAGE_RANKS` | Allows creating, deleting, and editing rank properties. |
+| `SET_RANK` | Allows assigning ranks to members of lower rank. |
+| `RENAME` | Allows changing the display name and MOTD of the team. |
+| `CHAT` | Allows sending messages in team chat. |
+| `TOGGLE_FRIENDLY_FIRE` | Allows toggling friendly fire for the team. |
+| `SET_HOME` | Allows setting and deleting the team home base. |
+
+Default rank structure:
+- `leader`: Priority 100, Gold, Bold, contains all permissions. Cannot be demoted or deleted.
+- `officer`: Priority 50, Aqua, contains `INVITE`, `KICK`, `CHANGE_ICON`, `CHAT`.
+- `member`: Priority 10, Gray, contains `CHAT`.
+
+---
+
+## Server Configuration
+
+Configuration file location: `world/serverconfig/simply_teams-server.toml` (or `config/simply_teams-server.toml`).
 
 ```toml
 [teams]
   # Maximum character length for team display names. Use -1 for unlimited length.
+  # Range: -1 ~ 256
   maxDisplayNameLength = -1
 
   # Whether teams are allowed to have custom colors.
@@ -140,12 +149,15 @@ Stored in the server `world/serverconfig/simply_teams-server.toml` or `config/` 
   allowTeamSuffix = true
 
   # Maximum character length for team prefixes. Use -1 for unlimited.
+  # Range: -1 ~ 64
   maxPrefixLength = 16
 
   # Maximum character length for team suffixes. Use -1 for unlimited.
+  # Range: -1 ~ 64
   maxSuffixLength = 16
 
-  # How many seconds a team invite remains valid before expiring.
+  # Duration in seconds before a team invitation expires.
+  # Range: 5 ~ 600
   inviteTimeoutSeconds = 60
 
   # Whether teams can set and teleport to a shared team home base.
@@ -161,26 +173,20 @@ Stored in the server `world/serverconfig/simply_teams-server.toml` or `config/` 
   # Whether to show the team suffix in the server player list (TAB).
   showSuffix = true
 
-  # Format for the team icon badge in the player list. %s is replaced by the item name.
+  # Format string for the team icon in the player list. %s represents the item name.
   iconFormat = "[%s]"
 ```
 
 ---
 
-## 📦 Building From Source
+## Building
 
-To build the mod JAR from source:
+Prerequisites: JDK 21.
+
+To build the mod jar:
 
 ```bash
 ./gradlew build
 ```
 
-The output JAR will be generated in `build/libs/simply_teams-1.0.0.jar`.
-
----
-
-## 📄 License
-
-This project is licensed under the [MIT License](LICENSE).
-Author: **Yigit_Guven** (2026).
-Repository: [https://github.com/yigit-guven/Simply-Teams](https://github.com/yigit-guven/Simply-Teams)
+The resulting file will be located at `build/libs/simply_teams-1.0.0.jar`.

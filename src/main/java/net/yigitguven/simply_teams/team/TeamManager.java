@@ -17,10 +17,7 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class TeamManager {
-    // Map of targetUUID -> (teamId.toLowerCase() -> TeamInvite)
     private static final Map<UUID, Map<String, TeamInvite>> pendingInvites = new ConcurrentHashMap<>();
-
-    // Set of player UUIDs who have toggled Team Chat mode ON
     private static final Set<UUID> teamChatModePlayers = ConcurrentHashMap.newKeySet();
 
     public static boolean isTeamChatMode(UUID playerUUID) {
@@ -88,10 +85,7 @@ public class TeamManager {
         data.addTeam(team);
         syncScoreboardTeam(team, server);
 
-        // Update leader's command tree immediately so /team create and accept are removed
         server.getCommands().sendCommands(leader);
-
-        // Refresh player in tab list
         refreshTabList(server, leader);
 
         leader.sendSystemMessage(Component.literal("Successfully created team ")
@@ -115,7 +109,6 @@ public class TeamManager {
             return false;
         }
 
-        // Notify all online members and update their command trees
         for (UUID memberUUID : team.getMembers().keySet()) {
             teamChatModePlayers.remove(memberUUID);
             ServerPlayer member = server.getPlayerList().getPlayer(memberUUID);
@@ -152,7 +145,6 @@ public class TeamManager {
         getData(server).updatePlayerMembership(player.getUUID(), null);
         removePlayerFromScoreboardTeam(team, player.getGameProfile().getName(), server);
 
-        // Update leaving player's commands & tab list
         server.getCommands().sendCommands(player);
         refreshTabList(server, player);
 
@@ -160,7 +152,6 @@ public class TeamManager {
                 .withStyle(ChatFormatting.YELLOW)
                 .append(team.getFormattedDisplayName()));
 
-        // Notify remaining team members
         broadcastToTeam(team, server, Component.literal(player.getGameProfile().getName() + " has left the team.").withStyle(ChatFormatting.YELLOW));
         return true;
     }
@@ -196,7 +187,6 @@ public class TeamManager {
             return false;
         }
 
-        // Compare rank priorities if not leader
         if (!team.isLeader(actor.getUUID())) {
             TeamRank actorRank = team.getMemberRank(actor.getUUID());
             TeamRank targetRank = team.getMemberRank(targetMember.getUuid());
@@ -246,7 +236,6 @@ public class TeamManager {
 
         inviter.sendSystemMessage(Component.literal("Sent team invitation to " + target.getGameProfile().getName() + " (expires in " + Config.INVITE_TIMEOUT_SECONDS.get() + "s).").withStyle(ChatFormatting.GREEN));
 
-        // Format interactive invitation message for target
         MutableComponent inviteMsg = Component.literal("\n========================================\n")
                 .withStyle(ChatFormatting.GOLD)
                 .append(Component.literal("You have been invited to join team ").withStyle(ChatFormatting.YELLOW))
@@ -281,7 +270,6 @@ public class TeamManager {
             return false;
         }
 
-        // Clean up expired invites
         playerInvites.values().removeIf(TeamInvite::isExpired);
 
         TeamInvite matchedInvite = null;
@@ -305,7 +293,7 @@ public class TeamManager {
         }
 
         if (matchedInvite == null || matchedInvite.isExpired()) {
-            player.sendSystemMessage(Component.literal("No valid or active invitation found matching '" + (query != null ? query : "") + "'!").withStyle(ChatFormatting.RED));
+            player.sendSystemMessage(Component.literal("No active invitation found matching '" + (query != null ? query : "") + "'!").withStyle(ChatFormatting.RED));
             return false;
         }
 
@@ -316,18 +304,15 @@ public class TeamManager {
             return false;
         }
 
-        // Join team
         team.addMember(playerUUID, player.getGameProfile().getName(), TeamRank.MEMBER_ID);
         getData(server).updatePlayerMembership(playerUUID, team.getId());
         playerInvites.remove(matchedInvite.getTeamId().toLowerCase());
 
         syncScoreboardTeam(team, server);
-
-        // Update command tree for the joining player immediately so /team create and accept disappear!
         server.getCommands().sendCommands(player);
         refreshTabList(server, player);
 
-        player.sendSystemMessage(Component.literal("You have successfully joined team ")
+        player.sendSystemMessage(Component.literal("You have joined team ")
                 .withStyle(ChatFormatting.GREEN)
                 .append(team.getFormattedDisplayName())
                 .append(Component.literal("!").withStyle(ChatFormatting.GREEN)));
@@ -391,7 +376,6 @@ public class TeamManager {
             pTeam.setPlayerSuffix(Component.empty());
         }
 
-        // Add members
         for (TeamMember member : team.getMembers().values()) {
             if (!pTeam.getPlayers().contains(member.getName())) {
                 scoreboard.addPlayerToTeam(member.getName(), pTeam);

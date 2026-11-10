@@ -1,0 +1,11 @@
+{
+  "homepage": "https://github.com/yigit-guven/Simply-Teams",
+  "promoted": {
+    "1.21.1-latest": "1.0.0",
+    "1.21.1-recommended": "1.0.0"
+  },
+  "1.21.1": {
+    "1.0.0": "Initial release of Simply Teams for Minecraft 1.21.1"
+  }
+}
+

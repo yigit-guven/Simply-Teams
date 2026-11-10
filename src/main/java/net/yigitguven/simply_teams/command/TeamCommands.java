@@ -33,7 +33,6 @@ public class TeamCommands {
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
         LiteralArgumentBuilder<CommandSourceStack> teamRoot = Commands.literal("team");
 
-        // --- Commands for players WITHOUT a team ---
         teamRoot.then(Commands.literal("create")
                 .requires(TeamCommands::isPlayerWithoutTeam)
                 .then(Commands.argument("displayName", StringArgumentType.greedyString())
@@ -49,7 +48,6 @@ public class TeamCommands {
                         .executes(context -> executeAccept(context, StringArgumentType.getString(context, "target"))))
                 .executes(context -> executeAccept(context, "")));
 
-        // --- Commands for players WITH a team ---
         teamRoot.then(Commands.literal("members")
                 .requires(TeamCommands::isPlayerWithTeam)
                 .executes(TeamCommands::executeMembers));
@@ -58,7 +56,6 @@ public class TeamCommands {
                 .requires(TeamCommands::isPlayerWithTeam)
                 .executes(TeamCommands::executeLeave));
 
-        // /team chat <message> sends message, /team chat without args toggles team chat mode
         teamRoot.then(Commands.literal("chat")
                 .requires(TeamCommands::isPlayerWithTeam)
                 .then(Commands.argument("message", StringArgumentType.greedyString())
@@ -125,7 +122,6 @@ public class TeamCommands {
                                                 StringArgumentType.getString(context, "color"),
                                                 BoolArgumentType.getBool(context, "bold")))))));
 
-        // Friendly fire toggle
         teamRoot.then(Commands.literal("friendlyfire")
                 .requires(TeamCommands::isPlayerWithTeam)
                 .then(Commands.argument("enabled", BoolArgumentType.bool())
@@ -138,7 +134,6 @@ public class TeamCommands {
                         .executes(context -> executeFriendlyFire(context, BoolArgumentType.getBool(context, "enabled"))))
                 .executes(context -> executeFriendlyFireToggle(context)));
 
-        // Team MOTD
         teamRoot.then(Commands.literal("motd")
                 .requires(TeamCommands::isPlayerWithTeam)
                 .then(Commands.literal("clear")
@@ -147,7 +142,6 @@ public class TeamCommands {
                         .executes(context -> executeSetMotd(context, StringArgumentType.getString(context, "message"))))
                 .executes(TeamCommands::executeShowMotd));
 
-        // Team Home Base
         teamRoot.then(Commands.literal("sethome")
                 .requires(TeamCommands::isPlayerWithTeam)
                 .executes(TeamCommands::executeSetHome));
@@ -160,7 +154,6 @@ public class TeamCommands {
                 .requires(TeamCommands::isPlayerWithTeam)
                 .executes(TeamCommands::executeDelHome));
 
-        // Leader-only management
         teamRoot.then(Commands.literal("disband")
                 .requires(TeamCommands::isPlayerTeamLeader)
                 .then(Commands.literal("confirm")
@@ -172,17 +165,14 @@ public class TeamCommands {
                 .then(Commands.argument("member", EntityArgument.player())
                         .executes(context -> executeTransfer(context, EntityArgument.getPlayer(context, "member")))));
 
-        // Rank management
         teamRoot.then(buildRankCommands());
 
-        // Info command (accessible to all)
         teamRoot.then(Commands.literal("info")
                 .then(Commands.argument("teamId", StringArgumentType.word())
                         .suggests(TeamCommands::suggestAllTeamIds)
                         .executes(context -> executeInfo(context, StringArgumentType.getString(context, "teamId"))))
                 .executes(context -> executeInfo(context, null)));
 
-        // List command (accessible to all)
         teamRoot.then(Commands.literal("list")
                 .then(Commands.argument("page", IntegerArgumentType.integer(1))
                         .executes(context -> executeList(context, IntegerArgumentType.getInteger(context, "page"))))
@@ -263,7 +253,6 @@ public class TeamCommands {
         return rank;
     }
 
-    // Predicates
     private static boolean isPlayerWithoutTeam(CommandSourceStack source) {
         if (source.getEntity() instanceof ServerPlayer player) {
             return !TeamManager.hasTeam(player.server, player.getUUID());
@@ -285,7 +274,6 @@ public class TeamCommands {
         return false;
     }
 
-    // Executions
     private static int executeCreate(CommandContext<CommandSourceStack> context, String displayName) {
         ServerPlayer player = context.getSource().getPlayer();
         if (player == null) return 0;
@@ -308,7 +296,6 @@ public class TeamCommands {
             return 0;
         }
 
-        // Opens native Minecraft generic_9x6 chest menu (100% server-sided, no client mod needed)
         player.openMenu(new SimpleMenuProvider(
                 (containerId, inv, p) -> new TeamMembersMenu(containerId, inv, team, player),
                 Component.literal("Team Members: " + team.getDisplayName())
@@ -327,10 +314,10 @@ public class TeamCommands {
         if (player == null) return 0;
         boolean nowTeamChat = TeamManager.toggleTeamChatMode(player.getUUID());
         if (nowTeamChat) {
-            player.sendSystemMessage(Component.literal("Team Chat Mode ENABLED: Regular messages will only be sent to your team.")
+            player.sendSystemMessage(Component.literal("Team Chat Mode enabled: messages will be sent to team.")
                     .withStyle(ChatFormatting.AQUA));
         } else {
-            player.sendSystemMessage(Component.literal("Team Chat Mode DISABLED: Messages will now be sent to public chat.")
+            player.sendSystemMessage(Component.literal("Team Chat Mode disabled: messages will be sent to public chat.")
                     .withStyle(ChatFormatting.YELLOW));
         }
         return 1;
@@ -397,7 +384,7 @@ public class TeamCommands {
         player.server.getCommands().sendCommands(newLeader);
         TeamManager.refreshTabListAll(player.server);
 
-        TeamManager.broadcastToTeam(team, player.server, Component.literal("Team leadership has been transferred to " + newLeader.getGameProfile().getName() + "!")
+        TeamManager.broadcastToTeam(team, player.server, Component.literal("Team leadership transferred to " + newLeader.getGameProfile().getName() + ".")
                 .withStyle(ChatFormatting.GOLD));
         return 1;
     }
@@ -443,7 +430,7 @@ public class TeamCommands {
 
         net.minecraft.world.item.ItemStack held = player.getMainHandItem();
         if (held.isEmpty()) {
-            context.getSource().sendFailure(Component.literal("You must hold an item in your main hand to set as team icon! Use /team icon clear to remove."));
+            context.getSource().sendFailure(Component.literal("Hold the item you want to set as team icon in your main hand."));
             return 0;
         }
 
@@ -452,10 +439,9 @@ public class TeamCommands {
         TeamSavedData.get(player.server).setDirty();
         TeamManager.refreshTabListAll(player.server);
 
-        context.getSource().sendSuccess(() -> Component.literal("Team icon successfully set to ")
+        context.getSource().sendSuccess(() -> Component.literal("Team icon set to ")
                 .withStyle(ChatFormatting.GREEN)
-                .append(icon.getHoverName())
-                .append(Component.literal("!").withStyle(ChatFormatting.GREEN)), false);
+                .append(icon.getHoverName()), false);
         return 1;
     }
 
@@ -485,7 +471,7 @@ public class TeamCommands {
         if (team == null) return 0;
 
         if (!Config.ALLOW_TEAM_COLOR.get()) {
-            context.getSource().sendFailure(Component.literal("Custom team colors are disabled on this server."));
+            context.getSource().sendFailure(Component.literal("Custom team colors are disabled."));
             return 0;
         }
 
@@ -496,7 +482,7 @@ public class TeamCommands {
 
         ChatFormatting color = ColorArgumentHelper.parseColor(colorName);
         if (color == null) {
-            context.getSource().sendFailure(Component.literal("Unknown color '" + colorName + "'!"));
+            context.getSource().sendFailure(Component.literal("Unknown color: " + colorName));
             return 0;
         }
 
@@ -517,7 +503,7 @@ public class TeamCommands {
         if (team == null) return 0;
 
         if (!Config.ALLOW_TEAM_PREFIX.get()) {
-            context.getSource().sendFailure(Component.literal("Team prefixes are disabled on this server."));
+            context.getSource().sendFailure(Component.literal("Team prefixes are disabled."));
             return 0;
         }
 
@@ -528,13 +514,13 @@ public class TeamCommands {
 
         int max = Config.MAX_PREFIX_LENGTH.get();
         if (max > 0 && tag.length() > max) {
-            context.getSource().sendFailure(Component.literal("Team prefix cannot exceed " + max + " characters!"));
+            context.getSource().sendFailure(Component.literal("Team prefix cannot exceed " + max + " characters."));
             return 0;
         }
 
         ChatFormatting color = ColorArgumentHelper.parseColor(colorName);
         if (color == null) {
-            context.getSource().sendFailure(Component.literal("Unknown color '" + colorName + "'!"));
+            context.getSource().sendFailure(Component.literal("Unknown color: " + colorName));
             return 0;
         }
 
@@ -576,7 +562,7 @@ public class TeamCommands {
         if (team == null) return 0;
 
         if (!Config.ALLOW_TEAM_SUFFIX.get()) {
-            context.getSource().sendFailure(Component.literal("Team suffixes are disabled on this server."));
+            context.getSource().sendFailure(Component.literal("Team suffixes are disabled."));
             return 0;
         }
 
@@ -587,13 +573,13 @@ public class TeamCommands {
 
         int max = Config.MAX_SUFFIX_LENGTH.get();
         if (max > 0 && tag.length() > max) {
-            context.getSource().sendFailure(Component.literal("Team suffix cannot exceed " + max + " characters!"));
+            context.getSource().sendFailure(Component.literal("Team suffix cannot exceed " + max + " characters."));
             return 0;
         }
 
         ChatFormatting color = ColorArgumentHelper.parseColor(colorName);
         if (color == null) {
-            context.getSource().sendFailure(Component.literal("Unknown color '" + colorName + "'!"));
+            context.getSource().sendFailure(Component.literal("Unknown color: " + colorName));
             return 0;
         }
 
@@ -628,7 +614,6 @@ public class TeamCommands {
         return 1;
     }
 
-    // Friendly fire
     private static int executeFriendlyFire(CommandContext<CommandSourceStack> context, boolean enabled) {
         ServerPlayer player = context.getSource().getPlayer();
         if (player == null) return 0;
@@ -644,7 +629,7 @@ public class TeamCommands {
         TeamSavedData.get(player.server).setDirty();
         TeamManager.syncScoreboardTeam(team, player.server);
 
-        TeamManager.broadcastToTeam(team, player.server, Component.literal("Friendly fire is now " + (enabled ? "ENABLED" : "DISABLED") + " for the team.")
+        TeamManager.broadcastToTeam(team, player.server, Component.literal("Friendly fire is now " + (enabled ? "enabled" : "disabled") + ".")
                 .withStyle(enabled ? ChatFormatting.RED : ChatFormatting.GREEN));
         return 1;
     }
@@ -657,7 +642,6 @@ public class TeamCommands {
         return executeFriendlyFire(context, !team.isFriendlyFire());
     }
 
-    // MOTD
     private static int executeSetMotd(CommandContext<CommandSourceStack> context, String message) {
         ServerPlayer player = context.getSource().getPlayer();
         if (player == null) return 0;
@@ -672,7 +656,7 @@ public class TeamCommands {
         team.setMotd(message);
         TeamSavedData.get(player.server).setDirty();
 
-        TeamManager.broadcastToTeam(team, player.server, Component.literal("Team MOTD set to: " + message).withStyle(ChatFormatting.YELLOW));
+        TeamManager.broadcastToTeam(team, player.server, Component.literal("Team MOTD set: " + message).withStyle(ChatFormatting.YELLOW));
         return 1;
     }
 
@@ -709,13 +693,12 @@ public class TeamCommands {
         return 1;
     }
 
-    // Home
     private static int executeSetHome(CommandContext<CommandSourceStack> context) {
         ServerPlayer player = context.getSource().getPlayer();
         if (player == null) return 0;
 
         if (!Config.ALLOW_TEAM_HOME.get()) {
-            context.getSource().sendFailure(Component.literal("Team home bases are disabled on this server."));
+            context.getSource().sendFailure(Component.literal("Team home bases are disabled."));
             return 0;
         }
 
@@ -730,7 +713,7 @@ public class TeamCommands {
         team.setHome(TeamHome.fromPlayer(player));
         TeamSavedData.get(player.server).setDirty();
 
-        TeamManager.broadcastToTeam(team, player.server, Component.literal("Team home base has been set by " + player.getGameProfile().getName() + "!")
+        TeamManager.broadcastToTeam(team, player.server, Component.literal("Team home base set by " + player.getGameProfile().getName() + ".")
                 .withStyle(ChatFormatting.GREEN));
         return 1;
     }
@@ -740,7 +723,7 @@ public class TeamCommands {
         if (player == null) return 0;
 
         if (!Config.ALLOW_TEAM_HOME.get()) {
-            context.getSource().sendFailure(Component.literal("Team home bases are disabled on this server."));
+            context.getSource().sendFailure(Component.literal("Team home bases are disabled."));
             return 0;
         }
 
@@ -748,7 +731,7 @@ public class TeamCommands {
         if (team == null) return 0;
 
         if (!team.hasHome()) {
-            context.getSource().sendFailure(Component.literal("Your team has not set a home base yet! Use /team sethome."));
+            context.getSource().sendFailure(Component.literal("Your team has not set a home base."));
             return 0;
         }
 
@@ -776,7 +759,6 @@ public class TeamCommands {
         return 1;
     }
 
-    // Rank operations
     private static int executeRankList(CommandContext<CommandSourceStack> context) {
         ServerPlayer player = context.getSource().getPlayer();
         if (player == null) return 0;
@@ -785,7 +767,7 @@ public class TeamCommands {
 
         MutableComponent list = Component.literal("\n=== Team Ranks (" + team.getDisplayName() + ") ===\n").withStyle(ChatFormatting.GOLD);
         for (TeamRank rank : team.getRanks().values()) {
-            list.append(Component.literal(" • ").withStyle(ChatFormatting.GRAY))
+            list.append(Component.literal(" - ").withStyle(ChatFormatting.GRAY))
                     .append(rank.getFormattedName())
                     .append(Component.literal(" [ID: " + rank.getId() + ", Priority: " + rank.getPriority() + "]\n").withStyle(ChatFormatting.DARK_GRAY));
             if (!rank.getPermissions().isEmpty()) {
@@ -888,7 +870,7 @@ public class TeamCommands {
         TeamSavedData.get(player.server).setDirty();
         TeamManager.refreshTabListAll(player.server);
 
-        TeamManager.broadcastToTeam(team, player.server, Component.literal(target.getName() + " was assigned to rank ")
+        TeamManager.broadcastToTeam(team, player.server, Component.literal(target.getName() + " assigned to rank ")
                 .withStyle(ChatFormatting.GREEN)
                 .append(newRank.getFormattedName()));
         return 1;
@@ -913,7 +895,7 @@ public class TeamCommands {
 
         ChatFormatting color = ColorArgumentHelper.parseColor(colorName);
         if (color == null) {
-            context.getSource().sendFailure(Component.literal("Unknown color '" + colorName + "'!"));
+            context.getSource().sendFailure(Component.literal("Unknown color: " + colorName));
             return 0;
         }
 
@@ -973,7 +955,7 @@ public class TeamCommands {
 
         TeamPermission permission = TeamPermission.fromString(permissionName);
         if (permission == null) {
-            context.getSource().sendFailure(Component.literal("Unknown permission '" + permissionName + "'!"));
+            context.getSource().sendFailure(Component.literal("Unknown permission: " + permissionName));
             return 0;
         }
 
@@ -1002,12 +984,12 @@ public class TeamCommands {
         } else {
             ServerPlayer player = source.getPlayer();
             if (player == null) {
-                source.sendFailure(Component.literal("Please specify a team ID: /team info <teamId>"));
+                source.sendFailure(Component.literal("Specify a team ID: /team info <teamId>"));
                 return 0;
             }
             team = TeamManager.getTeamByPlayer(player.server, player.getUUID());
             if (team == null) {
-                source.sendFailure(Component.literal("You are not in a team! Specify a team ID: /team info <teamId>"));
+                source.sendFailure(Component.literal("You are not in a team. Specify a team ID: /team info <teamId>"));
                 return 0;
             }
         }
@@ -1052,7 +1034,7 @@ public class TeamCommands {
     private static int executeList(CommandContext<CommandSourceStack> context, int page) {
         Collection<Team> allTeams = TeamManager.getAllTeams(context.getSource().getServer());
         if (allTeams.isEmpty()) {
-            context.getSource().sendSuccess(() -> Component.literal("There are currently no teams created on this server.").withStyle(ChatFormatting.GRAY), false);
+            context.getSource().sendSuccess(() -> Component.literal("No teams registered.").withStyle(ChatFormatting.GRAY), false);
             return 1;
         }
 
@@ -1070,7 +1052,7 @@ public class TeamCommands {
 
         for (int i = start; i < end; i++) {
             Team t = list.get(i);
-            header.append(Component.literal(" • ").withStyle(ChatFormatting.GRAY))
+            header.append(Component.literal(" - ").withStyle(ChatFormatting.GRAY))
                     .append(t.getFormattedDisplayName())
                     .append(Component.literal(" (ID: " + t.getId() + ") - " + t.getMembers().size() + " members [Leader: " + t.getId() + "]\n").withStyle(ChatFormatting.GRAY));
         }
@@ -1079,7 +1061,6 @@ public class TeamCommands {
         return 1;
     }
 
-    // Suggestions
     private static CompletableFuture<Suggestions> suggestTeamMembers(CommandContext<CommandSourceStack> context, SuggestionsBuilder builder) {
         ServerPlayer player = context.getSource().getPlayer();
         if (player != null) {

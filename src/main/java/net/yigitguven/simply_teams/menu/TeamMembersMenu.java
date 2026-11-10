@@ -90,21 +90,18 @@ public class TeamMembersMenu extends ChestMenu {
             chestContainer.setItem(slot, head);
         }
 
-        // Control bar (Row 5: slots 45 to 53)
         ItemStack border = new ItemStack(Items.GRAY_STAINED_GLASS_PANE);
         border.set(DataComponents.CUSTOM_NAME, Component.empty());
         for (int s = 45; s < 54; s++) {
             chestContainer.setItem(s, border.copy());
         }
 
-        // Slot 45: Previous page
         if (page > 0) {
             ItemStack prev = new ItemStack(Items.ARROW);
             prev.set(DataComponents.CUSTOM_NAME, Component.literal("« Previous Page (" + page + ")").withStyle(ChatFormatting.YELLOW));
             chestContainer.setItem(45, prev);
         }
 
-        // Slot 49: Team Info & Stats
         ItemStack infoItem;
         if (team.hasIcon()) {
             infoItem = team.getIconItem().copy();
@@ -129,7 +126,6 @@ public class TeamMembersMenu extends ChestMenu {
         infoItem.set(DataComponents.LORE, new ItemLore(infoLore));
         chestContainer.setItem(49, infoItem);
 
-        // Slot 53: Next page
         if (page < getMaxPage()) {
             ItemStack next = new ItemStack(Items.ARROW);
             next.set(DataComponents.CUSTOM_NAME, Component.literal("Next Page (" + (page + 2) + ") »").withStyle(ChatFormatting.YELLOW));
@@ -163,7 +159,6 @@ public class TeamMembersMenu extends ChestMenu {
             return;
         }
 
-        // View-only menu: cancel any item movement / pickup / shift-click
         if (player instanceof ServerPlayer sp) {
             sp.containerMenu.sendAllDataToRemote();
         }

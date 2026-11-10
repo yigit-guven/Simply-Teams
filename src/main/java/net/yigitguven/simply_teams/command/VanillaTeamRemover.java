@@ -30,10 +30,9 @@ public class VanillaTeamRemover {
                 literals.remove("team");
             }
 
-            SimplyTeams.LOGGER.info("Vanilla /team command successfully replaced with Simply Teams!");
+            SimplyTeams.LOGGER.debug("Removed vanilla team command node.");
         } catch (Exception e) {
-            SimplyTeams.LOGGER.error("Failed to remove vanilla /team command: {}", e.getMessage(), e);
+            SimplyTeams.LOGGER.error("Failed to remove vanilla team command node", e);
         }
     }
 }
-

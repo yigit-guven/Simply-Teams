@@ -14,7 +14,7 @@ import net.yigitguven.simply_teams.Config;
 import java.util.*;
 
 public class Team {
-    private final String id; // Leader's player nick
+    private final String id;
     private String displayName;
     private UUID leaderUUID;
     private ChatFormatting color;
@@ -41,7 +41,6 @@ public class Team {
         this.home = null;
         this.createdAt = System.currentTimeMillis();
 
-        // Initialize default ranks
         TeamRank leaderRank = TeamRank.createDefaultLeader();
         TeamRank officerRank = TeamRank.createDefaultOfficer();
         TeamRank memberRank = TeamRank.createDefaultMember();
@@ -49,7 +48,6 @@ public class Team {
         ranks.put(officerRank.getId(), officerRank);
         ranks.put(memberRank.getId(), memberRank);
 
-        // Add leader as first member
         TeamMember leaderMember = new TeamMember(leaderUUID, leaderName, TeamRank.LEADER_ID, this.createdAt);
         members.put(leaderUUID, leaderMember);
     }
@@ -219,11 +217,10 @@ public class Team {
 
     public boolean removeRank(String rankId) {
         if (TeamRank.LEADER_ID.equalsIgnoreCase(rankId) || TeamRank.MEMBER_ID.equalsIgnoreCase(rankId)) {
-            return false; // Cannot remove default leader or member ranks
+            return false;
         }
         TeamRank removed = ranks.remove(rankId.toLowerCase());
         if (removed != null) {
-            // Demote any members with this rank to member
             for (TeamMember member : members.values()) {
                 if (rankId.equalsIgnoreCase(member.getRankId())) {
                     member.setRankId(TeamRank.MEMBER_ID);
@@ -256,7 +253,7 @@ public class Team {
             int p2 = r2 != null ? r2.getPriority() : 0;
 
             if (p1 != p2) {
-                return Integer.compare(p2, p1); // Higher priority first
+                return Integer.compare(p2, p1);
             }
             return m1.getName().compareToIgnoreCase(m2.getName());
         });
@@ -343,7 +340,6 @@ public class Team {
             }
         }
 
-        // Ensure default ranks exist if missing
         if (!team.ranks.containsKey(TeamRank.LEADER_ID)) team.ranks.put(TeamRank.LEADER_ID, TeamRank.createDefaultLeader());
         if (!team.ranks.containsKey(TeamRank.OFFICER_ID)) team.ranks.put(TeamRank.OFFICER_ID, TeamRank.createDefaultOfficer());
         if (!team.ranks.containsKey(TeamRank.MEMBER_ID)) team.ranks.put(TeamRank.MEMBER_ID, TeamRank.createDefaultMember());

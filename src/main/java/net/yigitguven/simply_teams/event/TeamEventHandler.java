@@ -25,9 +25,7 @@ public class TeamEventHandler {
 
     @SubscribeEvent
     public static void onRegisterCommands(RegisterCommandsEvent event) {
-        // Obliterate vanilla Minecraft /team command
         VanillaTeamRemover.removeVanillaTeam(event.getDispatcher());
-        // Register Simply Teams /team command tree
         TeamCommands.register(event.getDispatcher());
     }
 
@@ -46,16 +44,13 @@ public class TeamEventHandler {
 
         MutableComponent nameComponent = Component.empty();
 
-        // 1. Team Prefix
         if (Config.ALLOW_TEAM_PREFIX.get() && Config.TAB_LIST_SHOW_PREFIX.get() && team.getPrefix().isEnabled()) {
             nameComponent.append(team.getPrefix().toComponent()).append(" ");
         }
 
-        // 2. Player Name (styled with team color)
         nameComponent.append(Component.literal(serverPlayer.getGameProfile().getName())
                 .withStyle(Style.EMPTY.withColor(team.getColor())));
 
-        // 3. Team Icon (displayed at the end of player name, before team suffix)
         if (team.hasIcon() && Config.TAB_LIST_SHOW_ICON.get()) {
             ItemStack stack = team.getIconItem();
             String itemName = stack.getHoverName().getString();
@@ -71,7 +66,6 @@ public class TeamEventHandler {
             nameComponent.append(iconComponent);
         }
 
-        // 4. Team Suffix (after icon)
         if (Config.ALLOW_TEAM_SUFFIX.get() && Config.TAB_LIST_SHOW_SUFFIX.get() && team.getSuffix().isEnabled()) {
             nameComponent.append(" ").append(team.getSuffix().toComponent());
         }
@@ -86,18 +80,15 @@ public class TeamEventHandler {
             MinecraftServer server = serverPlayer.server;
             Team team = TeamManager.getTeamByPlayer(server, serverPlayer.getUUID());
             if (team != null) {
-                // Update username in member record if it changed
                 team.getMember(serverPlayer.getUUID()).setName(serverPlayer.getGameProfile().getName());
                 TeamManager.syncScoreboardTeam(team, server);
 
-                // Show Team MOTD if set
                 if (!team.getMotd().isEmpty()) {
                     serverPlayer.sendSystemMessage(Component.literal("\n[Team MOTD] ")
                             .withStyle(ChatFormatting.GOLD)
                             .append(Component.literal(team.getMotd()).withStyle(ChatFormatting.YELLOW)));
                 }
             }
-            // Send appropriate command tree (so /team create and accept are hidden if in a team)
             server.getCommands().sendCommands(serverPlayer);
             TeamManager.refreshTabList(server, serverPlayer);
         }
