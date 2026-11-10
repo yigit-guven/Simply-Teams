@@ -178,6 +178,8 @@ public class TeamCommands {
                         .executes(context -> executeList(context, IntegerArgumentType.getInteger(context, "page"))))
                 .executes(context -> executeList(context, 1)));
 
+        teamRoot.then(buildAdminCommands());
+
         dispatcher.register(teamRoot);
     }
 
@@ -253,6 +255,190 @@ public class TeamCommands {
         return rank;
     }
 
+    private static LiteralArgumentBuilder<CommandSourceStack> buildAdminCommands() {
+        LiteralArgumentBuilder<CommandSourceStack> admin = Commands.literal("admin")
+                .requires(TeamManager::hasAdminPrivilege);
+
+        admin.then(Commands.literal("delete")
+                .then(Commands.argument("teamId", StringArgumentType.word())
+                        .suggests(TeamCommands::suggestAllTeamIds)
+                        .executes(context -> executeAdminDelete(context, StringArgumentType.getString(context, "teamId")))));
+
+        admin.then(Commands.literal("disband")
+                .then(Commands.argument("teamId", StringArgumentType.word())
+                        .suggests(TeamCommands::suggestAllTeamIds)
+                        .executes(context -> executeAdminDelete(context, StringArgumentType.getString(context, "teamId")))));
+
+        admin.then(Commands.literal("kick")
+                .then(Commands.argument("teamId", StringArgumentType.word())
+                        .suggests(TeamCommands::suggestAllTeamIds)
+                        .then(Commands.argument("member", StringArgumentType.word())
+                                .suggests(TeamCommands::suggestMembersOfTeamArg)
+                                .executes(context -> executeAdminKick(context,
+                                        StringArgumentType.getString(context, "teamId"),
+                                        StringArgumentType.getString(context, "member"))))));
+
+        admin.then(Commands.literal("add")
+                .then(Commands.argument("teamId", StringArgumentType.word())
+                        .suggests(TeamCommands::suggestAllTeamIds)
+                        .then(Commands.argument("player", EntityArgument.player())
+                                .executes(context -> executeAdminAdd(context,
+                                        StringArgumentType.getString(context, "teamId"),
+                                        EntityArgument.getPlayer(context, "player"))))));
+
+        admin.then(Commands.literal("setleader")
+                .then(Commands.argument("teamId", StringArgumentType.word())
+                        .suggests(TeamCommands::suggestAllTeamIds)
+                        .then(Commands.argument("player", EntityArgument.player())
+                                .executes(context -> executeAdminSetLeader(context,
+                                        StringArgumentType.getString(context, "teamId"),
+                                        EntityArgument.getPlayer(context, "player"))))));
+
+        admin.then(Commands.literal("rename")
+                .then(Commands.argument("teamId", StringArgumentType.word())
+                        .suggests(TeamCommands::suggestAllTeamIds)
+                        .then(Commands.argument("newName", StringArgumentType.greedyString())
+                                .executes(context -> executeAdminRename(context,
+                                        StringArgumentType.getString(context, "teamId"),
+                                        StringArgumentType.getString(context, "newName"))))));
+
+        admin.then(Commands.literal("color")
+                .then(Commands.argument("teamId", StringArgumentType.word())
+                        .suggests(TeamCommands::suggestAllTeamIds)
+                        .then(Commands.argument("color", StringArgumentType.word())
+                                .suggests(ColorArgumentHelper.SUGGESTIONS)
+                                .executes(context -> executeAdminColor(context,
+                                        StringArgumentType.getString(context, "teamId"),
+                                        StringArgumentType.getString(context, "color"))))));
+
+        admin.then(Commands.literal("prefix")
+                .then(Commands.argument("teamId", StringArgumentType.word())
+                        .suggests(TeamCommands::suggestAllTeamIds)
+                        .then(Commands.literal("clear")
+                                .executes(context -> executeAdminClearPrefix(context, StringArgumentType.getString(context, "teamId"))))
+                        .then(Commands.argument("tag", StringArgumentType.word())
+                                .then(Commands.argument("color", StringArgumentType.word())
+                                        .suggests(ColorArgumentHelper.SUGGESTIONS)
+                                        .then(Commands.argument("bold", BoolArgumentType.bool())
+                                                .executes(context -> executeAdminPrefix(context,
+                                                        StringArgumentType.getString(context, "teamId"),
+                                                        StringArgumentType.getString(context, "tag"),
+                                                        StringArgumentType.getString(context, "color"),
+                                                        BoolArgumentType.getBool(context, "bold"))))))));
+
+        admin.then(Commands.literal("suffix")
+                .then(Commands.argument("teamId", StringArgumentType.word())
+                        .suggests(TeamCommands::suggestAllTeamIds)
+                        .then(Commands.literal("clear")
+                                .executes(context -> executeAdminClearSuffix(context, StringArgumentType.getString(context, "teamId"))))
+                        .then(Commands.argument("tag", StringArgumentType.word())
+                            .then(Commands.argument("color", StringArgumentType.word())
+                                    .suggests(ColorArgumentHelper.SUGGESTIONS)
+                                    .then(Commands.argument("bold", BoolArgumentType.bool())
+                                            .executes(context -> executeAdminSuffix(context,
+                                                    StringArgumentType.getString(context, "teamId"),
+                                                    StringArgumentType.getString(context, "tag"),
+                                                    StringArgumentType.getString(context, "color"),
+                                                    BoolArgumentType.getBool(context, "bold"))))))));
+
+        admin.then(Commands.literal("icon")
+                .then(Commands.argument("teamId", StringArgumentType.word())
+                        .suggests(TeamCommands::suggestAllTeamIds)
+                        .then(Commands.literal("clear")
+                                .executes(context -> executeAdminClearIcon(context, StringArgumentType.getString(context, "teamId"))))
+                        .executes(context -> executeAdminSetIcon(context, StringArgumentType.getString(context, "teamId")))));
+
+        admin.then(Commands.literal("friendlyfire")
+                .then(Commands.argument("teamId", StringArgumentType.word())
+                        .suggests(TeamCommands::suggestAllTeamIds)
+                        .then(Commands.argument("enabled", BoolArgumentType.bool())
+                                .executes(context -> executeAdminFriendlyFire(context,
+                                        StringArgumentType.getString(context, "teamId"),
+                                        BoolArgumentType.getBool(context, "enabled"))))));
+
+        admin.then(Commands.literal("motd")
+                .then(Commands.argument("teamId", StringArgumentType.word())
+                        .suggests(TeamCommands::suggestAllTeamIds)
+                        .then(Commands.literal("clear")
+                                .executes(context -> executeAdminClearMotd(context, StringArgumentType.getString(context, "teamId"))))
+                        .then(Commands.argument("message", StringArgumentType.greedyString())
+                                .executes(context -> executeAdminMotd(context,
+                                        StringArgumentType.getString(context, "teamId"),
+                                        StringArgumentType.getString(context, "message"))))));
+
+        admin.then(Commands.literal("sethome")
+                .then(Commands.argument("teamId", StringArgumentType.word())
+                        .suggests(TeamCommands::suggestAllTeamIds)
+                        .executes(context -> executeAdminSetHome(context, StringArgumentType.getString(context, "teamId")))));
+
+        admin.then(Commands.literal("delhome")
+                .then(Commands.argument("teamId", StringArgumentType.word())
+                        .suggests(TeamCommands::suggestAllTeamIds)
+                        .executes(context -> executeAdminDelHome(context, StringArgumentType.getString(context, "teamId")))));
+
+        admin.then(Commands.literal("home")
+                .then(Commands.argument("teamId", StringArgumentType.word())
+                        .suggests(TeamCommands::suggestAllTeamIds)
+                        .executes(context -> executeAdminHome(context, StringArgumentType.getString(context, "teamId")))));
+
+        admin.then(Commands.literal("tp")
+                .then(Commands.argument("teamId", StringArgumentType.word())
+                        .suggests(TeamCommands::suggestAllTeamIds)
+                        .executes(context -> executeAdminHome(context, StringArgumentType.getString(context, "teamId")))));
+
+        admin.then(Commands.literal("members")
+                .then(Commands.argument("teamId", StringArgumentType.word())
+                        .suggests(TeamCommands::suggestAllTeamIds)
+                        .executes(context -> executeAdminMembers(context, StringArgumentType.getString(context, "teamId")))));
+
+        admin.then(Commands.literal("info")
+                .then(Commands.argument("teamId", StringArgumentType.word())
+                        .suggests(TeamCommands::suggestAllTeamIds)
+                        .executes(context -> executeInfo(context, StringArgumentType.getString(context, "teamId")))));
+
+        admin.then(Commands.literal("list")
+                .then(Commands.argument("page", IntegerArgumentType.integer(1))
+                        .executes(context -> executeList(context, IntegerArgumentType.getInteger(context, "page"))))
+                .executes(context -> executeList(context, 1)));
+
+        admin.then(Commands.literal("reload")
+                .executes(TeamCommands::executeAdminReload));
+
+        admin.executes(context -> {
+            context.getSource().sendSuccess(() -> Component.literal(
+                    "=== Simply Teams Admin Commands ===\n" +
+                    " /team admin delete <teamId> - Disband any team\n" +
+                    " /team admin kick <teamId> <member> - Kick member from team\n" +
+                    " /team admin add <teamId> <player> - Add player to team\n" +
+                    " /team admin setleader <teamId> <player> - Set team leader\n" +
+                    " /team admin rename <teamId> <name> - Rename team\n" +
+                    " /team admin color <teamId> <color> - Set team color\n" +
+                    " /team admin prefix <teamId> <tag> <color> <bold> - Set prefix\n" +
+                    " /team admin suffix <teamId> <tag> <color> <bold> - Set suffix\n" +
+                    " /team admin icon <teamId> [clear] - Set/clear held item icon\n" +
+                    " /team admin friendlyfire <teamId> <true|false> - Toggle FF\n" +
+                    " /team admin motd <teamId> <msg> [clear] - Set/clear MOTD\n" +
+                    " /team admin sethome/delhome/home <teamId> - Manage team home\n" +
+                    " /team admin members <teamId> - Open team members GUI\n" +
+                    " /team admin info <teamId> - Detailed team info\n" +
+                    " /team admin list - List all server teams\n" +
+                    " /team admin reload - Refresh permissions and tab list"
+            ).withStyle(ChatFormatting.GOLD), false);
+            return 1;
+        });
+
+        return admin;
+    }
+
+    private static boolean checkTeamPermission(CommandSourceStack source, Team team, TeamPermission permission) {
+        if (TeamManager.hasAdminPrivilege(source)) {
+            return true;
+        }
+        ServerPlayer player = source.getPlayer();
+        if (player == null) return true;
+        return team.hasPermission(player.getUUID(), permission);
+    }
+
     private static boolean isPlayerWithoutTeam(CommandSourceStack source) {
         if (source.getEntity() instanceof ServerPlayer player) {
             return !TeamManager.hasTeam(player.server, player.getUUID());
@@ -269,7 +455,10 @@ public class TeamCommands {
 
     private static boolean isPlayerTeamLeader(CommandSourceStack source) {
         if (source.getEntity() instanceof ServerPlayer player) {
-            return TeamManager.isLeader(player.server, player.getUUID());
+            if (TeamManager.isLeader(player.server, player.getUUID())) {
+                return true;
+            }
+            return TeamManager.hasAdminPrivilege(source) && TeamManager.hasTeam(player.server, player.getUUID());
         }
         return false;
     }
@@ -336,7 +525,7 @@ public class TeamCommands {
         Team team = TeamManager.getTeamByPlayer(player.server, player.getUUID());
         if (team == null) return 0;
 
-        if (!team.hasPermission(player.getUUID(), TeamPermission.INVITE)) {
+        if (!checkTeamPermission(context.getSource(), team, TeamPermission.INVITE)) {
             context.getSource().sendFailure(Component.literal("You do not have permission to invite players!"));
             return 0;
         }
@@ -367,7 +556,7 @@ public class TeamCommands {
         ServerPlayer player = context.getSource().getPlayer();
         if (player == null) return 0;
         Team team = TeamManager.getTeamByPlayer(player.server, player.getUUID());
-        if (team == null || !team.isLeader(player.getUUID())) {
+        if (team == null || (!team.isLeader(player.getUUID()) && !TeamManager.hasAdminPrivilege(context.getSource()))) {
             context.getSource().sendFailure(Component.literal("Only the team leader can transfer leadership!"));
             return 0;
         }
@@ -395,7 +584,7 @@ public class TeamCommands {
         Team team = TeamManager.getTeamByPlayer(player.server, player.getUUID());
         if (team == null) return 0;
 
-        if (!team.hasPermission(player.getUUID(), TeamPermission.RENAME)) {
+        if (!checkTeamPermission(context.getSource(), team, TeamPermission.RENAME)) {
             context.getSource().sendFailure(Component.literal("You do not have permission to rename the team!"));
             return 0;
         }
@@ -423,7 +612,7 @@ public class TeamCommands {
         Team team = TeamManager.getTeamByPlayer(player.server, player.getUUID());
         if (team == null) return 0;
 
-        if (!team.hasPermission(player.getUUID(), TeamPermission.CHANGE_ICON)) {
+        if (!checkTeamPermission(context.getSource(), team, TeamPermission.CHANGE_ICON)) {
             context.getSource().sendFailure(Component.literal("You do not have permission to change the team icon!"));
             return 0;
         }
@@ -451,7 +640,7 @@ public class TeamCommands {
         Team team = TeamManager.getTeamByPlayer(player.server, player.getUUID());
         if (team == null) return 0;
 
-        if (!team.hasPermission(player.getUUID(), TeamPermission.CHANGE_ICON)) {
+        if (!checkTeamPermission(context.getSource(), team, TeamPermission.CHANGE_ICON)) {
             context.getSource().sendFailure(Component.literal("You do not have permission to change the team icon!"));
             return 0;
         }
@@ -475,7 +664,7 @@ public class TeamCommands {
             return 0;
         }
 
-        if (!team.hasPermission(player.getUUID(), TeamPermission.CHANGE_COLOR)) {
+        if (!checkTeamPermission(context.getSource(), team, TeamPermission.CHANGE_COLOR)) {
             context.getSource().sendFailure(Component.literal("You do not have permission to change the team color!"));
             return 0;
         }
@@ -507,7 +696,7 @@ public class TeamCommands {
             return 0;
         }
 
-        if (!team.hasPermission(player.getUUID(), TeamPermission.CHANGE_PREFIX)) {
+        if (!checkTeamPermission(context.getSource(), team, TeamPermission.CHANGE_PREFIX)) {
             context.getSource().sendFailure(Component.literal("You do not have permission to change the team prefix!"));
             return 0;
         }
@@ -541,7 +730,7 @@ public class TeamCommands {
         Team team = TeamManager.getTeamByPlayer(player.server, player.getUUID());
         if (team == null) return 0;
 
-        if (!team.hasPermission(player.getUUID(), TeamPermission.CHANGE_PREFIX)) {
+        if (!checkTeamPermission(context.getSource(), team, TeamPermission.CHANGE_PREFIX)) {
             context.getSource().sendFailure(Component.literal("You do not have permission to change the team prefix!"));
             return 0;
         }
@@ -566,7 +755,7 @@ public class TeamCommands {
             return 0;
         }
 
-        if (!team.hasPermission(player.getUUID(), TeamPermission.CHANGE_SUFFIX)) {
+        if (!checkTeamPermission(context.getSource(), team, TeamPermission.CHANGE_SUFFIX)) {
             context.getSource().sendFailure(Component.literal("You do not have permission to change the team suffix!"));
             return 0;
         }
@@ -600,7 +789,7 @@ public class TeamCommands {
         Team team = TeamManager.getTeamByPlayer(player.server, player.getUUID());
         if (team == null) return 0;
 
-        if (!team.hasPermission(player.getUUID(), TeamPermission.CHANGE_SUFFIX)) {
+        if (!checkTeamPermission(context.getSource(), team, TeamPermission.CHANGE_SUFFIX)) {
             context.getSource().sendFailure(Component.literal("You do not have permission to change the team suffix!"));
             return 0;
         }
@@ -620,7 +809,7 @@ public class TeamCommands {
         Team team = TeamManager.getTeamByPlayer(player.server, player.getUUID());
         if (team == null) return 0;
 
-        if (!team.hasPermission(player.getUUID(), TeamPermission.TOGGLE_FRIENDLY_FIRE)) {
+        if (!checkTeamPermission(context.getSource(), team, TeamPermission.TOGGLE_FRIENDLY_FIRE)) {
             context.getSource().sendFailure(Component.literal("You do not have permission to toggle friendly fire!"));
             return 0;
         }
@@ -648,7 +837,7 @@ public class TeamCommands {
         Team team = TeamManager.getTeamByPlayer(player.server, player.getUUID());
         if (team == null) return 0;
 
-        if (!team.hasPermission(player.getUUID(), TeamPermission.RENAME)) {
+        if (!checkTeamPermission(context.getSource(), team, TeamPermission.RENAME)) {
             context.getSource().sendFailure(Component.literal("You do not have permission to change the team MOTD!"));
             return 0;
         }
@@ -666,7 +855,7 @@ public class TeamCommands {
         Team team = TeamManager.getTeamByPlayer(player.server, player.getUUID());
         if (team == null) return 0;
 
-        if (!team.hasPermission(player.getUUID(), TeamPermission.RENAME)) {
+        if (!checkTeamPermission(context.getSource(), team, TeamPermission.RENAME)) {
             context.getSource().sendFailure(Component.literal("You do not have permission to change the team MOTD!"));
             return 0;
         }
@@ -705,7 +894,7 @@ public class TeamCommands {
         Team team = TeamManager.getTeamByPlayer(player.server, player.getUUID());
         if (team == null) return 0;
 
-        if (!team.hasPermission(player.getUUID(), TeamPermission.SET_HOME)) {
+        if (!checkTeamPermission(context.getSource(), team, TeamPermission.SET_HOME)) {
             context.getSource().sendFailure(Component.literal("You do not have permission to set the team home!"));
             return 0;
         }
@@ -747,7 +936,7 @@ public class TeamCommands {
         Team team = TeamManager.getTeamByPlayer(player.server, player.getUUID());
         if (team == null) return 0;
 
-        if (!team.hasPermission(player.getUUID(), TeamPermission.SET_HOME)) {
+        if (!checkTeamPermission(context.getSource(), team, TeamPermission.SET_HOME)) {
             context.getSource().sendFailure(Component.literal("You do not have permission to delete the team home!"));
             return 0;
         }
@@ -785,7 +974,7 @@ public class TeamCommands {
         Team team = TeamManager.getTeamByPlayer(player.server, player.getUUID());
         if (team == null) return 0;
 
-        if (!team.hasPermission(player.getUUID(), TeamPermission.MANAGE_RANKS)) {
+        if (!checkTeamPermission(context.getSource(), team, TeamPermission.MANAGE_RANKS)) {
             context.getSource().sendFailure(Component.literal("You do not have permission to manage ranks!"));
             return 0;
         }
@@ -811,7 +1000,7 @@ public class TeamCommands {
         Team team = TeamManager.getTeamByPlayer(player.server, player.getUUID());
         if (team == null) return 0;
 
-        if (!team.hasPermission(player.getUUID(), TeamPermission.MANAGE_RANKS)) {
+        if (!checkTeamPermission(context.getSource(), team, TeamPermission.MANAGE_RANKS)) {
             context.getSource().sendFailure(Component.literal("You do not have permission to manage ranks!"));
             return 0;
         }
@@ -832,7 +1021,7 @@ public class TeamCommands {
         Team team = TeamManager.getTeamByPlayer(player.server, player.getUUID());
         if (team == null) return 0;
 
-        if (!team.hasPermission(player.getUUID(), TeamPermission.SET_RANK)) {
+        if (!checkTeamPermission(context.getSource(), team, TeamPermission.SET_RANK)) {
             context.getSource().sendFailure(Component.literal("You do not have permission to set member ranks!"));
             return 0;
         }
@@ -882,7 +1071,7 @@ public class TeamCommands {
         Team team = TeamManager.getTeamByPlayer(player.server, player.getUUID());
         if (team == null) return 0;
 
-        if (!team.hasPermission(player.getUUID(), TeamPermission.MANAGE_RANKS)) {
+        if (!checkTeamPermission(context.getSource(), team, TeamPermission.MANAGE_RANKS)) {
             context.getSource().sendFailure(Component.literal("You do not have permission to manage ranks!"));
             return 0;
         }
@@ -915,7 +1104,7 @@ public class TeamCommands {
         Team team = TeamManager.getTeamByPlayer(player.server, player.getUUID());
         if (team == null) return 0;
 
-        if (!team.hasPermission(player.getUUID(), TeamPermission.MANAGE_RANKS)) {
+        if (!checkTeamPermission(context.getSource(), team, TeamPermission.MANAGE_RANKS)) {
             context.getSource().sendFailure(Component.literal("You do not have permission to manage ranks!"));
             return 0;
         }
@@ -942,7 +1131,7 @@ public class TeamCommands {
         Team team = TeamManager.getTeamByPlayer(player.server, player.getUUID());
         if (team == null) return 0;
 
-        if (!team.hasPermission(player.getUUID(), TeamPermission.MANAGE_RANKS)) {
+        if (!checkTeamPermission(context.getSource(), team, TeamPermission.MANAGE_RANKS)) {
             context.getSource().sendFailure(Component.literal("You do not have permission to manage ranks!"));
             return 0;
         }
@@ -1106,5 +1295,158 @@ public class TeamCommands {
     private static CompletableFuture<Suggestions> suggestPermissions(CommandContext<CommandSourceStack> context, SuggestionsBuilder builder) {
         return SharedSuggestionProvider.suggest(
                 Arrays.stream(TeamPermission.values()).map(Enum::name), builder);
+    }
+
+    private static CompletableFuture<Suggestions> suggestMembersOfTeamArg(CommandContext<CommandSourceStack> context, SuggestionsBuilder builder) {
+        try {
+            String teamId = StringArgumentType.getString(context, "teamId");
+            Team team = TeamManager.getTeamById(context.getSource().getServer(), teamId);
+            if (team != null) {
+                return SharedSuggestionProvider.suggest(
+                        team.getMembers().values().stream().map(TeamMember::getName), builder);
+            }
+        } catch (IllegalArgumentException ignored) {
+        }
+        return builder.buildFuture();
+    }
+
+    private static int executeAdminDelete(CommandContext<CommandSourceStack> context, String teamId) {
+        return TeamManager.adminDisbandTeam(context.getSource().getServer(), teamId, context.getSource()) ? 1 : 0;
+    }
+
+    private static int executeAdminKick(CommandContext<CommandSourceStack> context, String teamId, String memberName) {
+        return TeamManager.adminKickMember(context.getSource().getServer(), teamId, memberName, context.getSource()) ? 1 : 0;
+    }
+
+    private static int executeAdminAdd(CommandContext<CommandSourceStack> context, String teamId, ServerPlayer player) {
+        return TeamManager.adminAddMember(context.getSource().getServer(), teamId, player, context.getSource()) ? 1 : 0;
+    }
+
+    private static int executeAdminSetLeader(CommandContext<CommandSourceStack> context, String teamId, ServerPlayer player) {
+        return TeamManager.adminSetLeader(context.getSource().getServer(), teamId, player, context.getSource()) ? 1 : 0;
+    }
+
+    private static int executeAdminRename(CommandContext<CommandSourceStack> context, String teamId, String newName) {
+        return TeamManager.adminRename(context.getSource().getServer(), teamId, newName, context.getSource()) ? 1 : 0;
+    }
+
+    private static int executeAdminColor(CommandContext<CommandSourceStack> context, String teamId, String colorName) {
+        ChatFormatting color = ColorArgumentHelper.parseColor(colorName);
+        if (color == null) {
+            context.getSource().sendFailure(Component.literal("Unknown color: " + colorName));
+            return 0;
+        }
+        return TeamManager.adminColor(context.getSource().getServer(), teamId, color, context.getSource()) ? 1 : 0;
+    }
+
+    private static int executeAdminPrefix(CommandContext<CommandSourceStack> context, String teamId, String tag, String colorName, boolean bold) {
+        ChatFormatting color = ColorArgumentHelper.parseColor(colorName);
+        if (color == null) {
+            context.getSource().sendFailure(Component.literal("Unknown color: " + colorName));
+            return 0;
+        }
+        return TeamManager.adminPrefix(context.getSource().getServer(), teamId, tag, color, bold, context.getSource()) ? 1 : 0;
+    }
+
+    private static int executeAdminClearPrefix(CommandContext<CommandSourceStack> context, String teamId) {
+        return TeamManager.adminClearPrefix(context.getSource().getServer(), teamId, context.getSource()) ? 1 : 0;
+    }
+
+    private static int executeAdminSuffix(CommandContext<CommandSourceStack> context, String teamId, String tag, String colorName, boolean bold) {
+        ChatFormatting color = ColorArgumentHelper.parseColor(colorName);
+        if (color == null) {
+            context.getSource().sendFailure(Component.literal("Unknown color: " + colorName));
+            return 0;
+        }
+        return TeamManager.adminSuffix(context.getSource().getServer(), teamId, tag, color, bold, context.getSource()) ? 1 : 0;
+    }
+
+    private static int executeAdminClearSuffix(CommandContext<CommandSourceStack> context, String teamId) {
+        return TeamManager.adminClearSuffix(context.getSource().getServer(), teamId, context.getSource()) ? 1 : 0;
+    }
+
+    private static int executeAdminSetIcon(CommandContext<CommandSourceStack> context, String teamId) {
+        ServerPlayer player = context.getSource().getPlayer();
+        if (player == null) {
+            context.getSource().sendFailure(Component.literal("Only in-game players can set icons!"));
+            return 0;
+        }
+
+        net.minecraft.world.item.ItemStack held = player.getMainHandItem();
+        if (held.isEmpty()) {
+            context.getSource().sendFailure(Component.literal("Hold the item you want to set as team icon in your main hand."));
+            return 0;
+        }
+
+        return TeamManager.adminIcon(player.server, teamId, held.copyWithCount(1), context.getSource()) ? 1 : 0;
+    }
+
+    private static int executeAdminClearIcon(CommandContext<CommandSourceStack> context, String teamId) {
+        return TeamManager.adminClearIcon(context.getSource().getServer(), teamId, context.getSource()) ? 1 : 0;
+    }
+
+    private static int executeAdminFriendlyFire(CommandContext<CommandSourceStack> context, String teamId, boolean enabled) {
+        return TeamManager.adminFriendlyFire(context.getSource().getServer(), teamId, enabled, context.getSource()) ? 1 : 0;
+    }
+
+    private static int executeAdminMotd(CommandContext<CommandSourceStack> context, String teamId, String message) {
+        return TeamManager.adminMotd(context.getSource().getServer(), teamId, message, context.getSource()) ? 1 : 0;
+    }
+
+    private static int executeAdminClearMotd(CommandContext<CommandSourceStack> context, String teamId) {
+        return TeamManager.adminClearMotd(context.getSource().getServer(), teamId, context.getSource()) ? 1 : 0;
+    }
+
+    private static int executeAdminSetHome(CommandContext<CommandSourceStack> context, String teamId) {
+        ServerPlayer player = context.getSource().getPlayer();
+        if (player == null) {
+            context.getSource().sendFailure(Component.literal("Only in-game players can set team home bases!"));
+            return 0;
+        }
+        return TeamManager.adminSetHome(player.server, teamId, player) ? 1 : 0;
+    }
+
+    private static int executeAdminDelHome(CommandContext<CommandSourceStack> context, String teamId) {
+        return TeamManager.adminDelHome(context.getSource().getServer(), teamId, context.getSource()) ? 1 : 0;
+    }
+
+    private static int executeAdminHome(CommandContext<CommandSourceStack> context, String teamId) {
+        ServerPlayer player = context.getSource().getPlayer();
+        if (player == null) {
+            context.getSource().sendFailure(Component.literal("Only in-game players can teleport to team home bases!"));
+            return 0;
+        }
+        return TeamManager.adminTeleportHome(player, teamId) ? 1 : 0;
+    }
+
+    private static int executeAdminMembers(CommandContext<CommandSourceStack> context, String teamId) {
+        ServerPlayer player = context.getSource().getPlayer();
+        if (player == null) {
+            context.getSource().sendFailure(Component.literal("Only in-game players can view the members GUI!"));
+            return 0;
+        }
+
+        Team team = TeamManager.getTeamById(player.server, teamId);
+        if (team == null) {
+            context.getSource().sendFailure(Component.literal("No team found with ID '" + teamId + "'!"));
+            return 0;
+        }
+
+        player.openMenu(new SimpleMenuProvider(
+                (containerId, inv, p) -> new TeamMembersMenu(containerId, inv, team, player),
+                Component.literal("Admin - Team: " + team.getDisplayName())
+        ));
+        return 1;
+    }
+
+    private static int executeAdminReload(CommandContext<CommandSourceStack> context) {
+        net.minecraft.server.MinecraftServer server = context.getSource().getServer();
+        for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+            server.getCommands().sendCommands(player);
+        }
+        TeamManager.refreshTabListAll(server);
+        context.getSource().sendSuccess(() -> Component.literal("Simply Teams refreshed commands and tab list for all players.")
+                .withStyle(ChatFormatting.GREEN), true);
+        return 1;
     }
 }

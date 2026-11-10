@@ -1,13 +1,11 @@
 # Simply Teams
 
-A server-sided Minecraft mod for NeoForge 1.21.1 that replaces the vanilla `/team` command with an expanded team management system.
+A server-sided Minecraft mod that replaces the vanilla `/team` command with an expanded team management system.
 
 ## Project Information
 
 - Author: Yigit_Guven
 - License: MIT
-- Minecraft Version: 1.21.1
-- Mod Loader: NeoForge (21.1.x)
 - Environment: Server-side only (clients do not need the mod installed)
 
 ## Links
@@ -103,6 +101,37 @@ Simply Teams unhooks the vanilla `/team` command tree and replaces it with an in
 | `/team rank permission <rankId> add <perm>` | Word, Permission name | `MANAGE_RANKS` | Adds a permission to a rank. |
 | `/team rank permission <rankId> remove <perm>` | Word, Permission name | `MANAGE_RANKS` | Removes a permission from a rank. |
 
+### Administrator Commands (OP Level 2+ / Console)
+
+Available when `opsAreAdmins` is enabled in configuration (`true` by default). When `opsAreAdmins` is `false`, operators are treated strictly as regular players and cannot access these commands.
+
+| Command | Arguments | Description |
+|---|---|---|
+| `/team admin delete <teamId>` | Team ID | Disbands and permanently deletes any team. |
+| `/team admin disband <teamId>` | Team ID | Alias for `/team admin delete`. |
+| `/team admin kick <teamId> <member>` | Team ID, Member name | Removes a member from any team. |
+| `/team admin add <teamId> <player>` | Team ID, Player entity | Forcefully adds a player to any team. |
+| `/team admin setleader <teamId> <player>` | Team ID, Player entity | Sets the leader of any team. |
+| `/team admin rename <teamId> <name>` | Team ID, Greedy string | Renames any team. |
+| `/team admin color <teamId> <color>` | Team ID, Color name | Changes any team's color. |
+| `/team admin prefix <teamId> <tag> <color> <bold>` | Team ID, Word, Color, Boolean | Sets any team's prefix. |
+| `/team admin prefix <teamId> clear` | Team ID | Clears any team's prefix. |
+| `/team admin suffix <teamId> <tag> <color> <bold>` | Team ID, Word, Color, Boolean | Sets any team's suffix. |
+| `/team admin suffix <teamId> clear` | Team ID | Clears any team's suffix. |
+| `/team admin icon <teamId>` | Team ID | Sets any team's icon to the held item. |
+| `/team admin icon <teamId> clear` | Team ID | Clears any team's icon. |
+| `/team admin friendlyfire <teamId> <enabled>` | Team ID, Boolean | Sets friendly fire for any team. |
+| `/team admin motd <teamId> <message>` | Team ID, Greedy string | Sets MOTD for any team. |
+| `/team admin motd <teamId> clear` | Team ID | Clears MOTD for any team. |
+| `/team admin sethome <teamId>` | Team ID | Sets any team's home base at current position. |
+| `/team admin delhome <teamId>` | Team ID | Deletes any team's home base. |
+| `/team admin home <teamId>` | Team ID | Teleports to any team's home base. |
+| `/team admin tp <teamId>` | Team ID | Alias for `/team admin home`. |
+| `/team admin members <teamId>` | Team ID | Opens the 54-slot chest GUI for any team. |
+| `/team admin info <teamId>` | Team ID | Displays detailed team information. |
+| `/team admin list [page]` | Optional integer | Lists all registered teams with member counts. |
+| `/team admin reload` | None | Refreshes command trees and tab list for all players. |
+
 ---
 
 ## Permissions Reference
@@ -162,6 +191,12 @@ Configuration file location: `world/serverconfig/simply_teams-server.toml` (or `
 
   # Whether teams can set and teleport to a shared team home base.
   allowTeamHome = true
+
+[admin]
+  # Whether server operators (OPs) have administrative privileges for Simply Teams.
+  # When true (default), operators can manage or delete other teams (/team admin) and bypass team permissions.
+  # When false, operators are treated strictly as regular players, allowing OPs to play normally without admin team powers.
+  opsAreAdmins = true
 
 [tab_list]
   # Whether to show the team icon in the server player list (TAB).

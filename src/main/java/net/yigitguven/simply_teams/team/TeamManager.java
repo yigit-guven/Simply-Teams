@@ -1,6 +1,7 @@
 package net.yigitguven.simply_teams.team;
 
 import net.minecraft.ChatFormatting;
+import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.HoverEvent;
@@ -9,6 +10,7 @@ import net.minecraft.network.chat.Style;
 import net.minecraft.network.protocol.game.ClientboundPlayerInfoUpdatePacket;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.scores.PlayerTeam;
 import net.minecraft.world.scores.Scoreboard;
 import net.yigitguven.simply_teams.Config;
@@ -59,6 +61,17 @@ public class TeamManager {
         return team != null && team.isLeader(playerUUID);
     }
 
+    public static boolean hasAdminPrivilege(CommandSourceStack source) {
+        if (source.getEntity() instanceof ServerPlayer player) {
+            return Config.OPS_ARE_ADMINS.get() && player.hasPermissions(2);
+        }
+        return source.hasPermission(2);
+    }
+
+    public static boolean hasAdminPrivilege(ServerPlayer player) {
+        return Config.OPS_ARE_ADMINS.get() && player.hasPermissions(2);
+    }
+
     public static Team createTeam(ServerPlayer leader, String displayName) {
         MinecraftServer server = leader.server;
         UUID leaderUUID = leader.getUUID();
@@ -104,7 +117,7 @@ public class TeamManager {
             return false;
         }
 
-        if (!team.isLeader(leader.getUUID())) {
+        if (!team.isLeader(leader.getUUID()) && !hasAdminPrivilege(leader)) {
             leader.sendSystemMessage(Component.literal("Only the team leader can disband the team!").withStyle(ChatFormatting.RED));
             return false;
         }
@@ -164,7 +177,8 @@ public class TeamManager {
             return false;
         }
 
-        if (!team.hasPermission(actor.getUUID(), TeamPermission.KICK)) {
+        boolean isAdmin = hasAdminPrivilege(actor);
+        if (!isAdmin && !team.hasPermission(actor.getUUID(), TeamPermission.KICK)) {
             actor.sendSystemMessage(Component.literal("You do not have permission to kick team members!").withStyle(ChatFormatting.RED));
             return false;
         }
@@ -183,11 +197,13 @@ public class TeamManager {
         }
 
         if (team.isLeader(targetMember.getUuid())) {
-            actor.sendSystemMessage(Component.literal("You cannot kick the team leader!").withStyle(ChatFormatting.RED));
-            return false;
+            if (!isAdmin) {
+                actor.sendSystemMessage(Component.literal("You cannot kick the team leader!").withStyle(ChatFormatting.RED));
+                return false;
+            }
         }
 
-        if (!team.isLeader(actor.getUUID())) {
+        if (!isAdmin && !team.isLeader(actor.getUUID())) {
             TeamRank actorRank = team.getMemberRank(actor.getUUID());
             TeamRank targetRank = team.getMemberRank(targetMember.getUuid());
             int actorP = actorRank != null ? actorRank.getPriority() : 0;
@@ -416,5 +432,402 @@ public class TeamManager {
         for (ServerPlayer player : server.getPlayerList().getPlayers()) {
             refreshTabList(server, player);
         }
+    }
+
+    public static boolean adminDisbandTeam(MinecraftServer server, String teamId, CommandSourceStack actorSource) {
+        Team team = getTeamById(server, teamId);
+        if (team == null) {
+            actorSource.sendFailure(Component.literal("No team found with ID '" + teamId + "'!"));
+            return false;
+        }
+
+        for (UUID memberUUID : team.getMembers().keySet()) {
+            teamChatModePlayers.remove(memberUUID);
+            ServerPlayer member = server.getPlayerList().getPlayer(memberUUID);
+            if (member != null) {
+                member.sendSystemMessage(Component.literal("Team ")
+                        .withStyle(ChatFormatting.RED)
+                        .append(team.getFormattedDisplayName())
+                        .append(Component.literal(" has been disbanded by an administrator.").withStyle(ChatFormatting.RED)));
+                server.getCommands().sendCommands(member);
+                refreshTabList(server, member);
+            }
+        }
+
+        removeScoreboardTeam(team, server);
+        getData(server).removeTeam(team.getId());
+
+        actorSource.sendSuccess(() -> Component.literal("Team '" + team.getDisplayName() + "' (ID: " + team.getId() + ") has been deleted.")
+                .withStyle(ChatFormatting.GREEN), true);
+        return true;
+    }
+
+    public static boolean adminKickMember(MinecraftServer server, String teamId, String memberName, CommandSourceStack actorSource) {
+        Team team = getTeamById(server, teamId);
+        if (team == null) {
+            actorSource.sendFailure(Component.literal("No team found with ID '" + teamId + "'!"));
+            return false;
+        }
+
+        TeamMember targetMember = null;
+        for (TeamMember m : team.getMembers().values()) {
+            if (m.getName().equalsIgnoreCase(memberName)) {
+                targetMember = m;
+                break;
+            }
+        }
+
+        if (targetMember == null) {
+            actorSource.sendFailure(Component.literal("Member '" + memberName + "' not found in team '" + teamId + "'!"));
+            return false;
+        }
+
+        if (team.isLeader(targetMember.getUuid())) {
+            actorSource.sendFailure(Component.literal("Cannot kick the team leader! Transfer leadership first using /team admin setleader or delete the team using /team admin delete."));
+            return false;
+        }
+
+        UUID targetUUID = targetMember.getUuid();
+        teamChatModePlayers.remove(targetUUID);
+        team.removeMember(targetUUID);
+        getData(server).updatePlayerMembership(targetUUID, null);
+        removePlayerFromScoreboardTeam(team, targetMember.getName(), server);
+
+        ServerPlayer targetOnline = server.getPlayerList().getPlayer(targetUUID);
+        if (targetOnline != null) {
+            targetOnline.sendSystemMessage(Component.literal("You have been removed from team ")
+                    .withStyle(ChatFormatting.RED)
+                    .append(team.getFormattedDisplayName())
+                    .append(Component.literal(" by an administrator.").withStyle(ChatFormatting.RED)));
+            server.getCommands().sendCommands(targetOnline);
+            refreshTabList(server, targetOnline);
+        }
+
+        broadcastToTeam(team, server, Component.literal(targetMember.getName() + " was removed from the team by an administrator.").withStyle(ChatFormatting.YELLOW));
+
+        TeamMember finalTargetMember = targetMember;
+        actorSource.sendSuccess(() -> Component.literal("Successfully removed " + finalTargetMember.getName() + " from team " + team.getId() + ".")
+                .withStyle(ChatFormatting.GREEN), true);
+        return true;
+    }
+
+    public static boolean adminAddMember(MinecraftServer server, String teamId, ServerPlayer target, CommandSourceStack actorSource) {
+        Team team = getTeamById(server, teamId);
+        if (team == null) {
+            actorSource.sendFailure(Component.literal("No team found with ID '" + teamId + "'!"));
+            return false;
+        }
+
+        if (team.isMember(target.getUUID())) {
+            actorSource.sendFailure(Component.literal(target.getGameProfile().getName() + " is already a member of team '" + teamId + "'!"));
+            return false;
+        }
+
+        Team existingTeam = getTeamByPlayer(server, target.getUUID());
+        if (existingTeam != null) {
+            if (existingTeam.isLeader(target.getUUID())) {
+                actorSource.sendFailure(Component.literal(target.getGameProfile().getName() + " is leader of another team (" + existingTeam.getId() + ")! Transfer leadership or disband it first."));
+                return false;
+            }
+            existingTeam.removeMember(target.getUUID());
+            removePlayerFromScoreboardTeam(existingTeam, target.getGameProfile().getName(), server);
+            broadcastToTeam(existingTeam, server, Component.literal(target.getGameProfile().getName() + " was transferred to another team by an administrator.").withStyle(ChatFormatting.YELLOW));
+        }
+
+        team.addMember(target.getUUID(), target.getGameProfile().getName(), TeamRank.MEMBER_ID);
+        getData(server).updatePlayerMembership(target.getUUID(), team.getId());
+        syncScoreboardTeam(team, server);
+        server.getCommands().sendCommands(target);
+        refreshTabList(server, target);
+
+        target.sendSystemMessage(Component.literal("You were added to team ")
+                .withStyle(ChatFormatting.GREEN)
+                .append(team.getFormattedDisplayName())
+                .append(Component.literal(" by an administrator.").withStyle(ChatFormatting.GREEN)));
+
+        broadcastToTeam(team, server, Component.literal(target.getGameProfile().getName() + " was added to the team by an administrator.").withStyle(ChatFormatting.GREEN));
+
+        actorSource.sendSuccess(() -> Component.literal("Added " + target.getGameProfile().getName() + " to team " + team.getId() + ".")
+                .withStyle(ChatFormatting.GREEN), true);
+        return true;
+    }
+
+    public static boolean adminSetLeader(MinecraftServer server, String teamId, ServerPlayer newLeader, CommandSourceStack actorSource) {
+        Team team = getTeamById(server, teamId);
+        if (team == null) {
+            actorSource.sendFailure(Component.literal("No team found with ID '" + teamId + "'!"));
+            return false;
+        }
+
+        UUID newLeaderUUID = newLeader.getUUID();
+        if (!team.isMember(newLeaderUUID)) {
+            if (!adminAddMember(server, teamId, newLeader, actorSource)) {
+                return false;
+            }
+        }
+
+        UUID oldLeaderUUID = team.getLeaderUUID();
+        TeamMember oldLeaderMember = team.getMember(oldLeaderUUID);
+        if (oldLeaderMember != null) {
+            oldLeaderMember.setRankId(TeamRank.OFFICER_ID);
+        }
+
+        team.setLeaderUUID(newLeaderUUID);
+        TeamMember newLeaderMember = team.getMember(newLeaderUUID);
+        if (newLeaderMember != null) {
+            newLeaderMember.setRankId(TeamRank.LEADER_ID);
+        }
+
+        getData(server).setDirty();
+        syncScoreboardTeam(team, server);
+        refreshTabListAll(server);
+
+        ServerPlayer oldLeader = server.getPlayerList().getPlayer(oldLeaderUUID);
+        if (oldLeader != null) {
+            server.getCommands().sendCommands(oldLeader);
+        }
+        server.getCommands().sendCommands(newLeader);
+
+        broadcastToTeam(team, server, Component.literal("Team leadership was set to " + newLeader.getGameProfile().getName() + " by an administrator.")
+                .withStyle(ChatFormatting.GOLD));
+
+        actorSource.sendSuccess(() -> Component.literal("Team leadership of " + team.getId() + " set to " + newLeader.getGameProfile().getName() + ".")
+                .withStyle(ChatFormatting.GREEN), true);
+        return true;
+    }
+
+    public static boolean adminRename(MinecraftServer server, String teamId, String newName, CommandSourceStack actorSource) {
+        Team team = getTeamById(server, teamId);
+        if (team == null) {
+            actorSource.sendFailure(Component.literal("No team found with ID '" + teamId + "'!"));
+            return false;
+        }
+
+        int max = Config.MAX_DISPLAY_NAME_LENGTH.get();
+        if (max > 0 && newName.length() > max) {
+            actorSource.sendFailure(Component.literal("Team display name cannot exceed " + max + " characters!"));
+            return false;
+        }
+
+        team.setDisplayName(newName);
+        getData(server).setDirty();
+        syncScoreboardTeam(team, server);
+        refreshTabListAll(server);
+
+        broadcastToTeam(team, server, Component.literal("Team display name was set to: ")
+                .withStyle(ChatFormatting.GREEN)
+                .append(team.getFormattedDisplayName()));
+
+        actorSource.sendSuccess(() -> Component.literal("Renamed team " + team.getId() + " to: ")
+                .withStyle(ChatFormatting.GREEN)
+                .append(team.getFormattedDisplayName()), true);
+        return true;
+    }
+
+    public static boolean adminColor(MinecraftServer server, String teamId, ChatFormatting color, CommandSourceStack actorSource) {
+        Team team = getTeamById(server, teamId);
+        if (team == null) {
+            actorSource.sendFailure(Component.literal("No team found with ID '" + teamId + "'!"));
+            return false;
+        }
+
+        team.setColor(color);
+        getData(server).setDirty();
+        syncScoreboardTeam(team, server);
+        refreshTabListAll(server);
+
+        actorSource.sendSuccess(() -> Component.literal("Team color for " + team.getId() + " set to " + color.getName())
+                .withStyle(color), true);
+        return true;
+    }
+
+    public static boolean adminPrefix(MinecraftServer server, String teamId, String tag, ChatFormatting color, boolean bold, CommandSourceStack actorSource) {
+        Team team = getTeamById(server, teamId);
+        if (team == null) {
+            actorSource.sendFailure(Component.literal("No team found with ID '" + teamId + "'!"));
+            return false;
+        }
+
+        team.setPrefix(new TeamTag(tag, color, bold, true));
+        getData(server).setDirty();
+        syncScoreboardTeam(team, server);
+        refreshTabListAll(server);
+
+        actorSource.sendSuccess(() -> Component.literal("Set prefix for team " + team.getId() + " to ")
+                .withStyle(ChatFormatting.GREEN)
+                .append(team.getPrefix().toComponent()), true);
+        return true;
+    }
+
+    public static boolean adminClearPrefix(MinecraftServer server, String teamId, CommandSourceStack actorSource) {
+        Team team = getTeamById(server, teamId);
+        if (team == null) {
+            actorSource.sendFailure(Component.literal("No team found with ID '" + teamId + "'!"));
+            return false;
+        }
+
+        team.setPrefix(TeamTag.empty());
+        getData(server).setDirty();
+        syncScoreboardTeam(team, server);
+        refreshTabListAll(server);
+
+        actorSource.sendSuccess(() -> Component.literal("Cleared prefix for team " + team.getId() + ".").withStyle(ChatFormatting.YELLOW), true);
+        return true;
+    }
+
+    public static boolean adminSuffix(MinecraftServer server, String teamId, String tag, ChatFormatting color, boolean bold, CommandSourceStack actorSource) {
+        Team team = getTeamById(server, teamId);
+        if (team == null) {
+            actorSource.sendFailure(Component.literal("No team found with ID '" + teamId + "'!"));
+            return false;
+        }
+
+        team.setSuffix(new TeamTag(tag, color, bold, true));
+        getData(server).setDirty();
+        syncScoreboardTeam(team, server);
+        refreshTabListAll(server);
+
+        actorSource.sendSuccess(() -> Component.literal("Set suffix for team " + team.getId() + " to ")
+                .withStyle(ChatFormatting.GREEN)
+                .append(team.getSuffix().toComponent()), true);
+        return true;
+    }
+
+    public static boolean adminClearSuffix(MinecraftServer server, String teamId, CommandSourceStack actorSource) {
+        Team team = getTeamById(server, teamId);
+        if (team == null) {
+            actorSource.sendFailure(Component.literal("No team found with ID '" + teamId + "'!"));
+            return false;
+        }
+
+        team.setSuffix(TeamTag.empty());
+        getData(server).setDirty();
+        syncScoreboardTeam(team, server);
+        refreshTabListAll(server);
+
+        actorSource.sendSuccess(() -> Component.literal("Cleared suffix for team " + team.getId() + ".").withStyle(ChatFormatting.YELLOW), true);
+        return true;
+    }
+
+    public static boolean adminIcon(MinecraftServer server, String teamId, ItemStack icon, CommandSourceStack actorSource) {
+        Team team = getTeamById(server, teamId);
+        if (team == null) {
+            actorSource.sendFailure(Component.literal("No team found with ID '" + teamId + "'!"));
+            return false;
+        }
+
+        team.setIconItem(icon);
+        getData(server).setDirty();
+        refreshTabListAll(server);
+
+        actorSource.sendSuccess(() -> Component.literal("Set icon for team " + team.getId() + " to ")
+                .withStyle(ChatFormatting.GREEN)
+                .append(icon.getHoverName()), true);
+        return true;
+    }
+
+    public static boolean adminClearIcon(MinecraftServer server, String teamId, CommandSourceStack actorSource) {
+        Team team = getTeamById(server, teamId);
+        if (team == null) {
+            actorSource.sendFailure(Component.literal("No team found with ID '" + teamId + "'!"));
+            return false;
+        }
+
+        team.setIconItem(ItemStack.EMPTY);
+        getData(server).setDirty();
+        refreshTabListAll(server);
+
+        actorSource.sendSuccess(() -> Component.literal("Cleared icon for team " + team.getId() + ".").withStyle(ChatFormatting.YELLOW), true);
+        return true;
+    }
+
+    public static boolean adminFriendlyFire(MinecraftServer server, String teamId, boolean enabled, CommandSourceStack actorSource) {
+        Team team = getTeamById(server, teamId);
+        if (team == null) {
+            actorSource.sendFailure(Component.literal("No team found with ID '" + teamId + "'!"));
+            return false;
+        }
+
+        team.setFriendlyFire(enabled);
+        getData(server).setDirty();
+        syncScoreboardTeam(team, server);
+
+        actorSource.sendSuccess(() -> Component.literal("Friendly fire for team " + team.getId() + " set to " + (enabled ? "enabled" : "disabled") + ".")
+                .withStyle(enabled ? ChatFormatting.RED : ChatFormatting.GREEN), true);
+        return true;
+    }
+
+    public static boolean adminMotd(MinecraftServer server, String teamId, String motd, CommandSourceStack actorSource) {
+        Team team = getTeamById(server, teamId);
+        if (team == null) {
+            actorSource.sendFailure(Component.literal("No team found with ID '" + teamId + "'!"));
+            return false;
+        }
+
+        team.setMotd(motd);
+        getData(server).setDirty();
+
+        actorSource.sendSuccess(() -> Component.literal("Set MOTD for team " + team.getId() + " to: " + motd).withStyle(ChatFormatting.YELLOW), true);
+        return true;
+    }
+
+    public static boolean adminClearMotd(MinecraftServer server, String teamId, CommandSourceStack actorSource) {
+        Team team = getTeamById(server, teamId);
+        if (team == null) {
+            actorSource.sendFailure(Component.literal("No team found with ID '" + teamId + "'!"));
+            return false;
+        }
+
+        team.setMotd("");
+        getData(server).setDirty();
+
+        actorSource.sendSuccess(() -> Component.literal("Cleared MOTD for team " + team.getId() + ".").withStyle(ChatFormatting.YELLOW), true);
+        return true;
+    }
+
+    public static boolean adminDelHome(MinecraftServer server, String teamId, CommandSourceStack actorSource) {
+        Team team = getTeamById(server, teamId);
+        if (team == null) {
+            actorSource.sendFailure(Component.literal("No team found with ID '" + teamId + "'!"));
+            return false;
+        }
+
+        team.setHome(null);
+        getData(server).setDirty();
+
+        actorSource.sendSuccess(() -> Component.literal("Deleted home base for team " + team.getId() + ".").withStyle(ChatFormatting.YELLOW), true);
+        return true;
+    }
+
+    public static boolean adminSetHome(MinecraftServer server, String teamId, ServerPlayer actor) {
+        Team team = getTeamById(server, teamId);
+        if (team == null) {
+            actor.sendSystemMessage(Component.literal("No team found with ID '" + teamId + "'!").withStyle(ChatFormatting.RED));
+            return false;
+        }
+
+        team.setHome(TeamHome.fromPlayer(actor));
+        getData(server).setDirty();
+
+        actor.sendSystemMessage(Component.literal("Set home base for team " + team.getId() + " to your current location.")
+                .withStyle(ChatFormatting.GREEN));
+        return true;
+    }
+
+    public static boolean adminTeleportHome(ServerPlayer player, String teamId) {
+        Team team = getTeamById(player.server, teamId);
+        if (team == null) {
+            player.sendSystemMessage(Component.literal("No team found with ID '" + teamId + "'!").withStyle(ChatFormatting.RED));
+            return false;
+        }
+
+        if (!team.hasHome()) {
+            player.sendSystemMessage(Component.literal("Team '" + teamId + "' does not have a home base set.").withStyle(ChatFormatting.RED));
+            return false;
+        }
+
+        team.getHome().teleport(player);
+        player.sendSystemMessage(Component.literal("Teleported to home base of team " + team.getDisplayName() + ".").withStyle(ChatFormatting.GREEN));
+        return true;
     }
 }

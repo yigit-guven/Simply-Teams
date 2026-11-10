@@ -13,6 +13,7 @@ public class Config {
     public static final ModConfigSpec.IntValue MAX_SUFFIX_LENGTH;
     public static final ModConfigSpec.IntValue INVITE_TIMEOUT_SECONDS;
     public static final ModConfigSpec.BooleanValue ALLOW_TEAM_HOME;
+    public static final ModConfigSpec.BooleanValue OPS_ARE_ADMINS;
 
     public static final ModConfigSpec.BooleanValue TAB_LIST_SHOW_ICON;
     public static final ModConfigSpec.BooleanValue TAB_LIST_SHOW_PREFIX;
@@ -53,6 +54,18 @@ public class Config {
         ALLOW_TEAM_HOME = BUILDER
                 .comment("Whether teams can set and teleport to a shared team home base (/team sethome, /team home).")
                 .define("allowTeamHome", true);
+
+        BUILDER.pop();
+
+        BUILDER.push("admin");
+
+        OPS_ARE_ADMINS = BUILDER
+                .comment(
+                        "Whether server operators (OPs) have administrative privileges for Simply Teams.",
+                        "When true (default), operators can manage or delete other teams (/team admin) and bypass team permissions.",
+                        "When false, operators are treated strictly as regular players, allowing OPs to play normally without admin team powers."
+                )
+                .define("opsAreAdmins", true);
 
         BUILDER.pop();
 
